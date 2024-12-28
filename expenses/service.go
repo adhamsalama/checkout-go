@@ -3,6 +3,7 @@ package ExpenseService
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -26,14 +27,14 @@ func NewExpensesService(db *sql.DB) *ExpensesService {
 	return &ExpensesService{db: db}
 }
 
-func (s *ExpensesService) CreateExpense(userID, name string, price float64, tags []string) (*Expense, error) {
-	stmt, err := s.db.Prepare("INSERT INTO expenses(user_id, name, price, tags, date) VALUES(?, ?, ?, ?, ?)")
+func (s *ExpensesService) CreateExpense(userID, name string, price float64, tags []string, date time.Time) (*Expense, error) {
+	stmt, err := s.db.Prepare("INSERT INTO expense (user_id, name, price, tags, date) VALUES(?, ?, ?, ?, ?)")
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	res, err := stmt.Exec(userID, name, price, "["+strings.Join(tags, ",")+"]", time.Now())
+	res, err := stmt.Exec(userID, name, price, "["+strings.Join(tags, ",")+"]", date.Format(time.RFC3339))
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ type GetExpensesFilter struct {
 func (s *ExpensesService) GetExpenses(filter GetExpensesFilter) ([]Expense, error) {
 	var queryParts []string
 	var args []interface{}
-	queryParts = append(queryParts, "SELECT id, user_id, name, price, tags, date FROM expenses WHERE user_id = ?")
+	queryParts = append(queryParts, "SELECT id, user_id, name, price, tags, date FROM expense WHERE user_id = ?")
 	args = append(args, filter.UserID)
 
 	if filter.Name != nil {
@@ -120,7 +121,7 @@ func (s *ExpensesService) GetExpenses(filter GetExpensesFilter) ([]Expense, erro
 }
 
 func (s *ExpensesService) UpdateExpense(id int, userID, name string, price float64, tags []string) (*Expense, error) {
-	stmt, err := s.db.Prepare("UPDATE expenses SET name = ?, price = ?, tags = ? WHERE id = ? AND user_id = ?")
+	stmt, err := s.db.Prepare("UPDATE expense SET name = ?, price = ?, tags = ? WHERE id = ? AND user_id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func (s *ExpensesService) UpdateExpense(id int, userID, name string, price float
 }
 
 func (s *ExpensesService) DeleteExpense(id int, userID string) error {
-	stmt, err := s.db.Prepare("DELETE FROM expenses WHERE id = ? AND user_id = ?")
+	stmt, err := s.db.Prepare("DELETE FROM expense WHERE id = ? AND user_id = ?")
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func (s *ExpensesService) GetStatistics(userID string) ([]ExpenseStatistics, err
 				EXPENSES.price,
 				EXPENSES.date,
 				json_extract(expenses.tags, '$') as tag
-			FROM expenses
+			FROM expense
 			WHERE user_id = ?
 		)
 		GROUP BY tag
@@ -204,7 +205,7 @@ func (s *ExpensesService) GetStatistics(userID string) ([]ExpenseStatistics, err
 		// Fetching items with max price per tag
 		maxItemsQuery := `
 			SELECT id, user_id, name, price, tags, date
-			FROM expenses
+			FROM expense
 			WHERE user_id = ? AND json_extract(tags, '$') = ? AND price = ?
 		`
 
@@ -235,8 +236,46 @@ func (s *ExpensesService) GetStatistics(userID string) ([]ExpenseStatistics, err
 	return stats, nil
 }
 
+func (s *ExpensesService) GetMonthlyStatisticsForAYear(userId string, year int) (map[int]float64, error) {
+	yearStart := fmt.Sprintf("%v-01-01", year)
+	yearEnd := fmt.Sprintf("%v-21-31", year)
+	summaryMap := make(map[int]float64)
+	for i := 1; i <= 12; i++ {
+		summaryMap[i] = 0
+	}
+
+	rows, err := s.db.Query(`
+	SELECT
+	  strftime('%m', date) AS month,
+		SUM(price)
+	FROM expense
+	WHERE
+	  user_id = ?
+		AND date >= ? AND date <= ?
+	GROUP BY month
+	`, userId, yearStart, yearEnd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var month int
+		var total float64
+		if err := rows.Scan(&month, &total); err != nil {
+			log.Fatalf("Failed to scan row: %v", err)
+		}
+		summaryMap[month] = total
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Fatalf("Row iteration error: %v", err)
+	}
+	return summaryMap, nil
+}
+
 func (s *ExpensesService) GetMonthlyStatistics(userID string, year, month int) ([]Expense, error) {
-	rows, err := s.db.Query("SELECT id, user_id, name, price, tags, date FROM expenses WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?", userID, fmt.Sprintf("%d", year), fmt.Sprintf("%02d", month))
+	rows, err := s.db.Query("SELECT id, user_id, name, price, tags, date FROM expense WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?", userID, fmt.Sprintf("%d", year), fmt.Sprintf("%02d", month))
 	if err != nil {
 		return nil, err
 	}
