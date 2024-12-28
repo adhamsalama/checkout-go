@@ -19,8 +19,8 @@ func main() {
 	defer db.Close()
 	// Create table if not exists
 	_, err = db.Exec(`
-	DROP TABLE IF EXISTS expenses;
-	CREATE TABLE IF NOT EXISTS expenses (
+	--DROP TABLE IF EXISTS expense;
+	CREATE TABLE IF NOT EXISTS expense (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id TEXT,
 		name TEXT,
@@ -37,29 +37,34 @@ func main() {
 	expenseService := ExpenseService.NewExpensesService(db)
 
 	// Example usage
-	_, err = expenseService.CreateExpense("user123", "Lunch", 12.50, []string{"food", "whatever"})
+	/*_, err = expenseService.CreateExpense("user123", "Lunch", 12.50, []string{"food", "whatever"}, time.Now()())
 	if err != nil {
 		log.Fatal(err)
-	}
-	priceGte := 12.0
-	expenses, err := expenseService.GetExpenses(ExpenseService.GetExpensesFilter{
-		UserID:   "user123",
-		PriceGte: &priceGte,
-		PriceLte: nil,
-		Limit:    10,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(len(expenses))
-	for _, exp := range expenses {
-		fmt.Println(exp)
-	}
-	stats, err := expenseService.GetStatistics("user123")
-	if err != nil {
-		log.Fatal(err)
-	}
-	for tag, price := range stats {
-		fmt.Println(tag, price)
-	}
+	}*/
+	/*
+		priceGte := 12.0
+		expenses, err := expenseService.GetExpenses(ExpenseService.GetExpensesFilter{
+			UserID:   "user123",
+			PriceGte: &priceGte,
+			PriceLte: nil,
+			Limit:    10,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(len(expenses))
+		for _, exp := range expenses {
+			fmt.Println(exp)
+		}
+		stats, err := expenseService.GetStatistics("user123")
+		if err != nil {
+			log.Fatal(err)
+		}
+		for tag, price := range stats {
+			fmt.Println(tag, price)
+		}
+	*/
+	monthlyStats, _ := expenseService.GetMonthlyStatisticsForAYear("640c709394fd39b646316575", 2024)
+	fmt.Println(monthlyStats)
+	// migration.MigrateExpensesFromMongoToSql(*expenseService)
 }
