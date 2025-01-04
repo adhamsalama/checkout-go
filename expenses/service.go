@@ -1,13 +1,14 @@
 package expensesservice
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Expense struct {
@@ -20,10 +21,10 @@ type Expense struct {
 }
 
 type ExpensesService struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewExpensesService(db *sql.DB) *ExpensesService {
+func NewExpensesService(db *sqlx.DB) *ExpensesService {
 	return &ExpensesService{db: db}
 }
 

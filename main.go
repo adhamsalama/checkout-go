@@ -1,10 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 
 	ExpenseService "checkout-go/expenses"
@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// Initialize SQLite database
-	db, err := sql.Open("sqlite3", "./sqlite3.db")
+	db, err := sqlx.Open("sqlite3", "./sqlite3.db")
 	if err != nil {
 		log.Fatal(err)
 	}
