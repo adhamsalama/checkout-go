@@ -236,7 +236,7 @@ func (s *ExpensesService) GetStatistics(userID string) ([]ExpenseStatistics, err
 	return stats, nil
 }
 
-func (s *ExpensesService) GetMonthlyStatisticsForAYear(userId string, year int) (map[int]float64, error) {
+func (s *ExpensesService) GetMonthlyStatisticsForAYear(userID string, year int) (map[int]float64, error) {
 	yearStart := fmt.Sprintf("%v-01-01", year)
 	yearEnd := fmt.Sprintf("%v-21-31", year)
 	summaryMap := make(map[int]float64)
@@ -253,7 +253,7 @@ func (s *ExpensesService) GetMonthlyStatisticsForAYear(userId string, year int) 
 	  user_id = ?
 		AND date >= ? AND date <= ?
 	GROUP BY month
-	`, userId, yearStart, yearEnd)
+	`, userID, yearStart, yearEnd)
 	if err != nil {
 		return nil, err
 	}
