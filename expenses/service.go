@@ -1,4 +1,4 @@
-package ExpenseService
+package expensesservice
 
 import (
 	"database/sql"
