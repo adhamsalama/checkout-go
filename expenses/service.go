@@ -275,7 +275,15 @@ func (s *ExpensesService) GetMonthlyStatisticsForAYear(userId string, year int) 
 }
 
 func (s *ExpensesService) GetMonthlyStatistics(userID string, year, month int) ([]Expense, error) {
-	rows, err := s.db.Query("SELECT id, user_id, name, price, tags, date FROM expense WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?", userID, fmt.Sprintf("%d", year), fmt.Sprintf("%02d", month))
+	rows, err := s.db.Query(`
+		SELECT
+		 strftime('%d', date) AS day,
+		FROM 
+			expense
+		WHERE 
+			user_id = ?
+			AND strftime('%Y', date) = ?
+			AND strftime('%m', date) = ?`, userID, fmt.Sprintf("%d", year), fmt.Sprintf("%02d", month))
 	if err != nil {
 		return nil, err
 	}
