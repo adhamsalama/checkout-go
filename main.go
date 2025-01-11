@@ -2,38 +2,45 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"time"
 
+	Transactions "checkout-go/transactions"
+
+	goqu "github.com/doug-martin/goqu/v9"
+	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
 	"github.com/jmoiron/sqlx"
-
-	ExpenseService "checkout-go/expenses"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
 	// Initialize SQLite database
 	db, err := sqlx.Open("sqlite3", "./sqlite3.db")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("err: %v\n", err)
+		return
 	}
-	defer db.Close()
-	// Create table if not exists
-	_, err = db.Exec(`
-	--DROP TABLE IF EXISTS expense;
-	CREATE TABLE IF NOT EXISTS expense (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id TEXT,
-		name TEXT,
-		price REAL,
-		tags JSONB,
-		date DATETIME
-	);
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create ExpensesService instance
-	expenseService := ExpenseService.NewExpensesService(db)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// defer db.Close()
+	// // Create table if not exists
+	// _, err = db.Exec(`
+	// --DROP TABLE IF EXISTS expense;
+	// CREATE TABLE IF NOT EXISTS expense (
+	// 	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	// 	user_id TEXT,
+	// 	name TEXT,
+	// 	price REAL,
+	// 	tags JSONB,
+	// 	date DATETIME
+	// );
+	// `)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	//
+	// // Create ExpensesService instance
+	// expenseService := ExpenseService.NewExpensesService(db)
 
 	// Example usage
 	/*_, err = expenseService.CreateExpense("user123", "Lunch", 12.50, []string{"food", "whatever"}, time.Now()())
@@ -63,7 +70,43 @@ func main() {
 			fmt.Println(tag, price)
 		}
 	*/
-	monthlyStats, _ := expenseService.GetMonthlyStatisticsForAYear("640c709394fd39b646316575", 2024)
-	fmt.Println(monthlyStats)
+	// monthlyStats, _ := expenseService.GetMonthlyStatisticsForAYear("640c709394fd39b646316575", 2024)
+	// fmt.Println(monthlyStats)
 	// migration.MigrateExpensesFromMongoToSql(*expenseService)
+	goquDB := goqu.New("sqlite3", db)
+	_, err = goquDB.Exec(`
+		
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Auto-incrementing ID
+    user_id INTEGER,                      -- User ID
+    name TEXT,                            -- Name of the transaction
+    price REAL,                           -- Price (floating-point)
+    date TEXT,                            -- Date as ISO 8601 string
+    tags                              -- Tags as a JSON-encoded array
+);
+		`)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		return
+	}
+	transactionsService := Transactions.TransactionService{
+		DB: goquDB,
+	}
+	createdTransaction, err := transactionsService.Create(1, "asd", 120, time.Now(), []string{})
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+
+		return
+	}
+	fmt.Printf("createdTransaction: %v\n", createdTransaction)
+	price := 420.0
+	updateData := Transactions.TransactionUpdate{
+		Price: &price,
+	}
+	res, err := transactionsService.Update(createdTransaction.ID, createdTransaction.UserID, updateData)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		return
+	}
+	fmt.Printf("res: %v\n", res)
 }
