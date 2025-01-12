@@ -45,6 +45,14 @@ func (service *TransactionService) Create(userID int, name string, price float64
 	return &transaction, nil
 }
 
+func (service *TransactionService) CreateExpense(userID int, name string, price float64, date time.Time, tags []string) (*Transaction, error) {
+	return service.Create(userID, name, -price, date, tags)
+}
+
+func (service *TransactionService) CreatePayment(userID int, name string, price float64, date time.Time, tags []string) (*Transaction, error) {
+	return service.Create(userID, name, price, date, tags)
+}
+
 type TransactionUpdate struct {
 	Name  *string    `json:"name,omitempty"`
 	Price *float64   `json:"price,omitempty"`
@@ -94,4 +102,59 @@ func (service *TransactionService) Update(ID int, userID int, updateData Transac
 		return nil, err
 	}
 	return &transaction, nil
+}
+
+type TransactionList struct {
+	IDs      *[]string  `json:"ids,omitempty"`
+	Name     *string    `json:"name,omitempty"`
+	PriceGte *float64   `json:"pricegte,omitempty"`
+	PriceLte *float64   `json:"pricelte,omitempty"`
+	Tags     *[]string  `json:"tags,omitempty"`
+	DateGte  *time.Time `json:"dategte,omitempty"`
+	DateLte  *time.Time `json:"datelte,omitempty"`
+}
+
+func (service *TransactionService) List(userID int, filters TransactionList) (*[]Transaction, error) {
+	selectStatement := service.DB.From("transactions").Select("*").Where(goqu.Ex{
+		"user_id": userID,
+	})
+	if filters.IDs != nil {
+		selectStatement = selectStatement.Where(goqu.Ex{"id": filters.IDs})
+	}
+	if filters.Name != nil {
+		selectStatement = selectStatement.Where(goqu.Ex{
+			"name": goqu.Op{
+				"like": "%" + *filters.Name + "%",
+			},
+		})
+	}
+	if filters.PriceGte != nil {
+		selectStatement = selectStatement.Where(goqu.Ex{
+			"price": goqu.Op{"gte": filters.PriceGte},
+		})
+	}
+	if filters.PriceGte != nil {
+		selectStatement = selectStatement.Where(goqu.Ex{
+			"price": goqu.Op{"gte": filters.PriceGte},
+		})
+	}
+	if filters.Tags != nil {
+		selectStatement = selectStatement.Where(goqu.L("EXISTS (SELECT 1 FROM json_each(tags) WHERE value IN ?)", filters.Tags))
+	}
+	if filters.DateGte != nil {
+		selectStatement = selectStatement.Where(goqu.Ex{
+			"date": goqu.Op{"gte": filters.DateGte},
+		})
+	}
+	if filters.DateLte != nil {
+		selectStatement = selectStatement.Where(goqu.Ex{
+			"date": goqu.Op{"lte": filters.DateLte},
+		})
+	}
+	transactions := []Transaction{}
+	err := selectStatement.ScanStructs(&transactions)
+	if err != nil {
+		return nil, err
+	}
+	return &transactions, nil
 }
