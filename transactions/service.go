@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
+
+	"checkout-go/customtypes"
 
 	goqu "github.com/doug-martin/goqu/v9"
 )
@@ -21,8 +22,8 @@ func (service *TransactionService) Create(userID int, name string, price float64
 		UserID: userID,
 		Name:   name,
 		Price:  price,
-		Date:   date,
-		Tags:   tags,
+		Date:   customtypes.TimeWrapper(date),
+		Tags:   customtypes.StringSlice(tags),
 	}
 	result, err := transactions.Insert().Rows(
 		goqu.Record{
@@ -30,13 +31,12 @@ func (service *TransactionService) Create(userID int, name string, price float64
 			"name":    name,
 			"price":   price,
 			"date":    date,
-			"tags":    "[" + strings.Join(tags, ",") + "]",
+			"tags":    customtypes.StringSlice(tags),
 		},
 	).Executor().Exec()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("err in inserting row: %s", err)
 	}
-
 	insertID, err := result.LastInsertId()
 	if err != nil {
 		return nil, err
