@@ -160,7 +160,7 @@ func (service *TransactionService) List(userID int, filters TransactionList) (*[
 	return &transactions, nil
 }
 
-type ExpenseSummary struct {
+type MonthlyExpenseSummary struct {
 	Month   string  `db:"month"`
 	Count   int     `db:"count"`
 	Total   float64 `db:"sum"`
@@ -169,7 +169,7 @@ type ExpenseSummary struct {
 	Min     float64 `db:"min"`
 }
 
-func (service *TransactionService) GetExpensesMonthlyStatisticsForYear(userID int, year int) (*[]ExpenseSummary, error) {
+func (service *TransactionService) GetExpensesMonthlyStatisticsForYear(userID int, year int) (*[]MonthlyExpenseSummary, error) {
 	selectStatement := service.DB.From("transactions").Select(
 		goqu.L("strftime('%m', date)").As("month"),
 		goqu.COUNT("*").As("count"),
@@ -186,7 +186,53 @@ func (service *TransactionService) GetExpensesMonthlyStatisticsForYear(userID in
 			goqu.C("price").Lte(0),
 		).
 		GroupBy(goqu.L("strftime('%m', date)"))
-	var summaries []ExpenseSummary
+	var summaries []MonthlyExpenseSummary
+	if err := selectStatement.ScanStructs(&summaries); err != nil {
+		fmt.Printf("err: %v\n", err)
+		return nil, err
+	}
+	return &summaries, nil
+}
+
+type YearlyExpenseSummary struct {
+	Month   string  `db:"month"`
+	Year    string  `db:"year"`
+	Count   int     `db:"count"`
+	Total   float64 `db:"sum"`
+	Average float64 `db:"avg"`
+	Max     float64 `db:"max"`
+	Min     float64 `db:"min"`
+}
+
+func (service *TransactionService) GetExpensesMonthlyStatisticsForYears(userID int, years ...int) (*[]YearlyExpenseSummary, error) {
+	yearStrings := make([]string, len(years))
+
+	for _, year := range years {
+		yearStrings = append(yearStrings, strconv.Itoa(year))
+	}
+	selectStatement := service.DB.From("transactions").Select(
+		goqu.L("strftime('%m', date)").As("month"),
+		goqu.L("strftime('%Y', date)").As("year"),
+		goqu.COUNT("*").As("count"),
+		goqu.SUM("price").As("sum"),
+		goqu.AVG("price").As("avg"),
+		goqu.MAX("price").As("max"),
+		goqu.MIN("price").As("min"),
+	).
+		Where(
+			goqu.Ex{
+				"user_id": userID,
+			},
+			goqu.L("strftime('%Y', date)").In(yearStrings),
+			goqu.C("price").Lte(0),
+		).
+		GroupBy(goqu.L("strftime('%m', date)")).
+		Order(
+			goqu.L("strftime('%Y', date)").Desc(),
+			goqu.L("strftime('%m', date)").Desc(),
+		)
+
+	var summaries []YearlyExpenseSummary
 	if err := selectStatement.ScanStructs(&summaries); err != nil {
 		fmt.Printf("err: %v\n", err)
 		return nil, err
