@@ -18,14 +18,6 @@ type TransactionService struct {
 
 func (service *TransactionService) Create(userID int, name string, price float64, date time.Time, tags []string) (*Transaction, error) {
 	transactions := service.DB.From("transactions")
-	transaction := Transaction{
-		ID:     0,
-		UserID: userID,
-		Name:   name,
-		Price:  price,
-		Date:   customtypes.TimeWrapper(date),
-		Tags:   customtypes.StringSlice(tags),
-	}
 	result, err := transactions.Insert().Rows(
 		goqu.Record{
 			"user_id": userID,
@@ -42,7 +34,14 @@ func (service *TransactionService) Create(userID int, name string, price float64
 	if err != nil {
 		return nil, err
 	}
-	transaction.ID = int(insertID)
+	transaction := Transaction{
+		ID:     int(insertID),
+		UserID: userID,
+		Name:   name,
+		Price:  price,
+		Date:   customtypes.TimeWrapper(date),
+		Tags:   customtypes.StringSlice(tags),
+	}
 	return &transaction, nil
 }
 
