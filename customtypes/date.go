@@ -37,3 +37,7 @@ func (t TimeWrapper) Value() (driver.Value, error) {
 	}
 	return time.Time(t).Format("2006-01-02 15:04:05"), nil
 }
+
+func (t TimeWrapper) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.Time().Format(time.RFC3339) + `"`), nil
+}
