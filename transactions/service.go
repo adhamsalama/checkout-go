@@ -106,7 +106,7 @@ func (service *TransactionService) Update(ID int, userID int, updateData Transac
 }
 
 type TransactionList struct {
-	IDs      *[]string  `json:"ids,omitempty"`
+	IDs      *[]int     `json:"ids,omitempty"`
 	Name     *string    `json:"name,omitempty"`
 	PriceGte *float64   `json:"pricegte,omitempty"`
 	PriceLte *float64   `json:"pricelte,omitempty"`

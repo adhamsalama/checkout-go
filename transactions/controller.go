@@ -94,3 +94,29 @@ func (c *TransactionController) GetExpensesMonthlyStatisticsForAYear(w http.Resp
 		return
 	}
 }
+
+func (c *TransactionController) GetTransactionByID(w http.ResponseWriter, req *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(req, "id"))
+	if err != nil || id < 1 {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+	filters := TransactionList{
+		IDs: &[]int{id},
+	}
+	aggregation, err := c.TransactionsService.List(1, filters)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(*aggregation) == 0 {
+		http.Error(w, "Invalid ID", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode((*aggregation)[0])
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

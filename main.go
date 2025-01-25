@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Post("/expense", transactionController.CreateExpense)
 	r.Get("/statistics/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
 	r.Get("/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
+	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }
