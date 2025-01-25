@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"time"
 
@@ -237,4 +238,76 @@ func (service *TransactionService) GetExpensesMonthlyStatisticsForYears(userID i
 		return nil, err
 	}
 	return &summaries, nil
+}
+
+type DailyExpenseSummary struct {
+	Day     int     `db:"day"`
+	Count   int     `db:"count"`
+	Total   float64 `db:"sum"`
+	Average float64 `db:"avg"`
+	Max     float64 `db:"max"`
+	Min     float64 `db:"min"`
+}
+
+func (service *TransactionService) GetExpensesDailyStatisticsForMonthInYear(userID int, month int, year int) (*[]DailyExpenseSummary, error) {
+	if month > 12 {
+		return nil, fmt.Errorf("invalid month")
+	}
+	selectStatement := service.DB.From("transactions").Select(
+		goqu.L("CAST(strftime('%d', date) AS INT)").As("day"),
+		goqu.COUNT("*").As("count"),
+		goqu.SUM("price").As("sum"),
+		goqu.AVG("price").As("avg"),
+		goqu.MAX("price").As("max"),
+		goqu.MIN("price").As("min"),
+	).
+		Where(
+			goqu.Ex{
+				"user_id": userID,
+			},
+			goqu.L("strftime('%Y', date) = ?", strconv.Itoa(year)),
+			goqu.L("CAST(strftime('%m', date) AS INT) = ?", month),
+			goqu.C("price").Lte(0),
+		).
+		GroupBy("day").
+		Order(goqu.I("day").Asc())
+	var summaries []DailyExpenseSummary
+	if err := selectStatement.ScanStructs(&summaries); err != nil {
+		fmt.Printf("err: %v\n", err)
+		return nil, err
+	}
+	daysInMonth := daysInMonth(month, year)
+	fmt.Printf("daysInMonth: %v\n", daysInMonth)
+	if len(summaries) == daysInMonth {
+		return &summaries, nil
+	}
+	daysMap := make(map[int]DailyExpenseSummary, daysInMonth)
+	for _, expense := range summaries {
+		daysMap[expense.Day+1] = expense
+	}
+	for i := range daysInMonth {
+		dayIndex := i + 1
+		_, ok := daysMap[dayIndex]
+		if !ok {
+			daysMap[dayIndex] = DailyExpenseSummary{Day: dayIndex}
+			fmt.Printf("day not eixts %v\n", dayIndex)
+		}
+	}
+	var fullDaySummaries []DailyExpenseSummary
+	for _, expense := range daysMap {
+		fullDaySummaries = append(fullDaySummaries, expense)
+	}
+
+	sort.Slice(fullDaySummaries, func(i, j int) bool {
+		return fullDaySummaries[i].Day < fullDaySummaries[j].Day
+	})
+	for _, des := range fullDaySummaries {
+		fmt.Printf("i: %v, v: %v\n", des.Day, des)
+	}
+	return &fullDaySummaries, nil
+}
+
+// Returns the number of days in a month for a given year.
+func daysInMonth(m int, year int) int {
+	return time.Date(year, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
 }
