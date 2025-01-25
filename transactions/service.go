@@ -61,7 +61,7 @@ type TransactionUpdate struct {
 }
 
 func (service *TransactionService) Update(ID int, userID int, updateData TransactionUpdate) (*Transaction, error) {
-	fields := map[string]interface{}{}
+	fields := map[string]any{}
 
 	if updateData.Name != nil {
 		fields["name"] = *updateData.Name
