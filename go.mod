@@ -4,6 +4,7 @@ go 1.22.9
 
 require (
 	github.com/doug-martin/goqu/v9 v9.19.0 // indirect
+	github.com/go-chi/chi/v5 v5.2.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect

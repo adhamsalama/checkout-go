@@ -2,12 +2,15 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
-	Transactions "checkout-go/transactions"
+	"checkout-go/transactions"
 
 	goqu "github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -89,7 +92,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 		fmt.Printf("err: %v\n", err)
 		return
 	}
-	transactionsService := Transactions.TransactionService{
+	transactionsService := transactions.TransactionService{
 		DB: goquDB,
 	}
 	createdTransaction, err := transactionsService.Create(1, "asd", 120, time.Now(), []string{})
@@ -109,4 +112,17 @@ CREATE TABLE IF NOT EXISTS transactions (
 		return
 	}
 	fmt.Printf("res: %v\n", res)
+	transactionController := transactions.TransactionController{
+		TransactionsService: transactionsService,
+	}
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Post("/expense", transactionController.CreateExpense)
+	r.Get("/statistics/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
+	r.Get("/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
+	// Start the server
+	http.ListenAndServe(":8080", r)
 }
