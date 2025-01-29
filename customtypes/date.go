@@ -1,7 +1,9 @@
 package customtypes
 
 import (
+	"bytes"
 	"database/sql/driver"
+	"encoding/binary"
 	"fmt"
 	"time"
 )
@@ -40,4 +42,21 @@ func (t TimeWrapper) Value() (driver.Value, error) {
 
 func (t TimeWrapper) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + t.Time().Format(time.RFC3339) + `"`), nil
+}
+
+// UnmarshalBSON customizes the unmarshalling of TimeWrapper from BSON.
+func (t *TimeWrapper) UnmarshalBSON(data []byte) error {
+	var timestamp int64
+	err := binary.Read(bytes.NewReader(data), binary.LittleEndian, &timestamp)
+	if err != nil {
+		return err
+	}
+
+	// Convert the timestamp (milliseconds) to seconds
+	timestampSeconds := timestamp / 1000
+
+	// Convert to time.Time
+	time := time.Unix(timestampSeconds, 0)
+	*t = TimeWrapper(time)
+	return nil
 }

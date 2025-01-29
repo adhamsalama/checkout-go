@@ -20,6 +20,8 @@ func (c *TransactionController) CreateExpense(w http.ResponseWriter, req *http.R
 		UserID int       `json:"userId"`
 		Name   string    `json:"name"`
 		Price  float64   `json:"price"`
+		Seller string    `json:"seller"`
+		Note   string    `json:"note"`
 		Date   time.Time `json:"date"`
 		Tags   []string  `json:"tags"`
 	}
@@ -36,7 +38,7 @@ func (c *TransactionController) CreateExpense(w http.ResponseWriter, req *http.R
 		return
 	}
 	fmt.Printf("expense: %v\n", expense)
-	transaction, err := c.TransactionsService.CreateExpense(expense.UserID, expense.Name, expense.Price, expense.Date, expense.Tags)
+	transaction, err := c.TransactionsService.CreateExpense(expense.UserID, expense.Name, expense.Price, expense.Seller, expense.Note, expense.Date, expense.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -168,6 +170,20 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 	}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode((*list))
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *TransactionController) GetBalance(w http.ResponseWriter, req *http.Request) {
+	balance, err := c.TransactionsService.GetBalance(1)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode((balance))
 	if err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 		return

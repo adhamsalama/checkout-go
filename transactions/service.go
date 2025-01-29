@@ -17,7 +17,7 @@ type TransactionService struct {
 	DB *goqu.Database
 }
 
-func (service *TransactionService) Create(userID int, name string, price float64, date time.Time, tags []string) (*Transaction, error) {
+func (service *TransactionService) Create(userID int, name string, price float64, seller string, note string, date time.Time, tags []string) (*Transaction, error) {
 	transactions := service.DB.From("transactions")
 	result, err := transactions.Insert().Rows(
 		goqu.Record{
@@ -25,6 +25,8 @@ func (service *TransactionService) Create(userID int, name string, price float64
 			"name":    name,
 			"price":   price,
 			"date":    date,
+			"seller":  seller,
+			"note":    note,
 			"tags":    customtypes.StringSlice(tags),
 		},
 	).Executor().Exec()
@@ -40,18 +42,20 @@ func (service *TransactionService) Create(userID int, name string, price float64
 		UserID: userID,
 		Name:   name,
 		Price:  price,
+		Seller: seller,
+		Note:   note,
 		Date:   customtypes.TimeWrapper(date),
 		Tags:   customtypes.StringSlice(tags),
 	}
 	return &transaction, nil
 }
 
-func (service *TransactionService) CreateExpense(userID int, name string, price float64, date time.Time, tags []string) (*Transaction, error) {
-	return service.Create(userID, name, -price, date, tags)
+func (service *TransactionService) CreateExpense(userID int, name string, price float64, seller string, note string, date time.Time, tags []string) (*Transaction, error) {
+	return service.Create(userID, name, -price, seller, note, date, tags)
 }
 
-func (service *TransactionService) CreatePayment(userID int, name string, price float64, date time.Time, tags []string) (*Transaction, error) {
-	return service.Create(userID, name, price, date, tags)
+func (service *TransactionService) CreatePayment(userID int, name string, price float64, seller string, note string, date time.Time, tags []string) (*Transaction, error) {
+	return service.Create(userID, name, price, seller, note, date, tags)
 }
 
 type TransactionUpdate struct {
@@ -341,14 +345,23 @@ func (service *TransactionService) GetTagsStatistics(userID int) (*[]Transaction
 		).
 		GroupBy(goqu.L("tag")).
 		Order(goqu.L("sum").Asc(), goqu.L("count").Desc())
-	sql, _, _ := selectStatement.ToSQL()
-	fmt.Printf("sql: %v\n", sql)
 	var result []TransactionTagsAggregationResult
 	if err := selectStatement.ScanStructs(&result); err != nil {
 		fmt.Printf("err: %v\n", err)
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (service *TransactionService) GetBalance(userID int) (float64, error) {
+	selectStatement := service.DB.From("transactions").
+		Select(goqu.SUM("price").As("sum"))
+	var balance float64
+	_, err := selectStatement.ScanVal(&balance)
+	if err != nil {
+		return 0, err
+	}
+	return balance, nil
 }
 
 // Returns the number of days in a month for a given year.

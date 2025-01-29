@@ -1,16 +1,17 @@
 package migration
 
 import (
-	ExpenseService "checkout-go/expenses"
 	"context"
 	"fmt"
+
+	Transactions "checkout-go/transactions"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetMongoExpenses() []ExpenseService.Expense {
+func GetMongoExpenses() []Transactions.Transaction {
 	uri := "mongodb://localhost:27017"
 	client, err := mongo.Connect(context.TODO(), options.Client().
 		ApplyURI(uri))
@@ -23,11 +24,11 @@ func GetMongoExpenses() []ExpenseService.Expense {
 		}
 	}()
 	coll := client.Database("nest").Collection("expenses")
-	var results []ExpenseService.Expense
+	var results []Transactions.Transaction
 	cursor, err := coll.Find(context.TODO(), bson.D{})
 	if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found ")
-		return []ExpenseService.Expense{}
+		return []Transactions.Transaction{}
 	}
 	if err != nil {
 		panic(err)
@@ -38,11 +39,11 @@ func GetMongoExpenses() []ExpenseService.Expense {
 	return results
 }
 
-func MigrateExpensesFromMongoToSql(expenseService ExpenseService.ExpensesService) {
-
+func MigrateExpensesFromMongoToSql(transactionsService *Transactions.TransactionService) {
 	mongoExpenses := GetMongoExpenses()
+	fmt.Printf("mongoExpenses: %v\n", len(mongoExpenses))
 	for _, expense := range mongoExpenses {
-		_, err := expenseService.CreateExpense(expense.UserID, expense.Name, expense.Price, expense.Tags, expense.Date)
+		_, err := transactionsService.CreateExpense(1, expense.Name, expense.Price, expense.Seller, expense.Note, expense.Date.Time(), expense.Tags)
 		if err != nil {
 			fmt.Printf("err: %v\n", err)
 		}
