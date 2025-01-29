@@ -120,3 +120,22 @@ func (c *TransactionController) GetTransactionByID(w http.ResponseWriter, req *h
 		return
 	}
 }
+
+func (c *TransactionController) GetTagsStatistics(w http.ResponseWriter, req *http.Request) {
+	userID := 1
+	aggregation, err := c.TransactionsService.GetTagsStatistics(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(*aggregation) == 0 {
+		http.Error(w, "Invalid ID", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode((*aggregation))
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

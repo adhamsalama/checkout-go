@@ -307,6 +307,42 @@ func (service *TransactionService) GetExpensesDailyStatisticsForMonthInYear(user
 	return &fullDaySummaries, nil
 }
 
+type TransactionTagsAggregationResult struct {
+	Count int     `json:"count"`
+	Min   float64 `json:"min"`
+	Max   float64 `json:"max"`
+	Avg   float64 `json:"avg"`
+	Sum   float64 `json:"sum"`
+	Tag   string  `json:"tag"`
+}
+
+func (service *TransactionService) GetTagsStatistics(userID int) (*[]TransactionTagsAggregationResult, error) {
+	selectStatement := service.DB.From("transactions").
+		Join(goqu.L("json_each(tags)").As("tag"), goqu.On(goqu.L("1 = 1"))).
+		Where(
+			goqu.C("price").Lte(0),
+			goqu.C("user_id").Eq(userID),
+		).
+		Select(
+			goqu.COUNT("*").As("count"),
+			goqu.MAX("price").As("min"),
+			goqu.MIN("price").As("max"),
+			goqu.AVG("price").As("avg"),
+			goqu.SUM("price").As("sum"),
+			goqu.L("tag.value").As("tag"),
+		).
+		GroupBy(goqu.L("tag")).
+		Order(goqu.L("sum").Asc(), goqu.L("count").Desc())
+	sql, _, _ := selectStatement.ToSQL()
+	fmt.Printf("sql: %v\n", sql)
+	var result []TransactionTagsAggregationResult
+	if err := selectStatement.ScanStructs(&result); err != nil {
+		fmt.Printf("err: %v\n", err)
+		return nil, err
+	}
+	return &result, nil
+}
+
 // Returns the number of days in a month for a given year.
 func daysInMonth(m int, year int) int {
 	return time.Date(year, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
