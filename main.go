@@ -120,11 +120,12 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Post("/expense", transactionController.CreateExpense)
-	r.Get("/statistics/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
-	r.Get("/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
+	r.Post("/expenses", transactionController.CreateExpense)
+	r.Get("/expenses/statistics/yearly/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
+	r.Get("/expenses/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
 	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
-	r.Get("/statistics", transactionController.GetTagsStatistics)
+	r.Get("/expenses/statistics", transactionController.GetTagsStatistics)
+	r.Get("/expenses", transactionController.ListExpenses)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }

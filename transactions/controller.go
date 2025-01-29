@@ -139,3 +139,37 @@ func (c *TransactionController) GetTagsStatistics(w http.ResponseWriter, req *ht
 		return
 	}
 }
+
+func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Request) {
+	limitStr := req.URL.Query().Get("limit")
+	offsetStr := req.URL.Query().Get("offset")
+
+	var filters TransactionList
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		filters.Limit = &limit
+	}
+	if offsetStr != "" {
+		offset, err := strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		filters.Offset = &offset
+	}
+	list, err := c.TransactionsService.List(1, filters)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode((*list))
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

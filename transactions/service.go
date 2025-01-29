@@ -113,6 +113,8 @@ type TransactionList struct {
 	Tags     *[]string  `json:"tags,omitempty"`
 	DateGte  *time.Time `json:"dategte,omitempty"`
 	DateLte  *time.Time `json:"datelte,omitempty"`
+	Limit    *int       `json:"limit"`
+	Offset   *int       `json:"offset"`
 }
 
 func (service *TransactionService) List(userID int, filters TransactionList) (*[]Transaction, error) {
@@ -152,6 +154,12 @@ func (service *TransactionService) List(userID int, filters TransactionList) (*[
 			"date": goqu.Op{"lte": filters.DateLte},
 		})
 	}
+	if filters.Limit != nil {
+		selectStatement.Limit(uint(*filters.Limit))
+	}
+	if filters.Offset != nil {
+		selectStatement.Offset(uint(*filters.Offset))
+	}
 	transactions := []Transaction{}
 	err := selectStatement.ScanStructs(&transactions)
 	if err != nil {
@@ -161,17 +169,17 @@ func (service *TransactionService) List(userID int, filters TransactionList) (*[
 }
 
 type MonthlyExpenseSummary struct {
-	Month   string  `db:"month"`
-	Count   int     `db:"count"`
-	Total   float64 `db:"sum"`
-	Average float64 `db:"avg"`
-	Max     float64 `db:"max"`
-	Min     float64 `db:"min"`
+	Month   int     `db:"month" json:"month"`
+	Count   int     `db:"count" json:"count"`
+	Sum     float64 `db:"sum" json:"sum"`
+	Average float64 `db:"avg" json:"avg"`
+	Max     float64 `db:"max" json:"max" `
+	Min     float64 `db:"min" json:"min"`
 }
 
 func (service *TransactionService) GetExpensesMonthlyStatisticsForYear(userID int, year int) (*[]MonthlyExpenseSummary, error) {
 	selectStatement := service.DB.From("transactions").Select(
-		goqu.L("strftime('%m', date)").As("month"),
+		goqu.L("CAST(strftime('%m', date) AS INTEGER)").As("month"),
 		goqu.COUNT("*").As("count"),
 		goqu.SUM("price").As("sum"),
 		goqu.AVG("price").As("avg"),
@@ -182,7 +190,7 @@ func (service *TransactionService) GetExpensesMonthlyStatisticsForYear(userID in
 			goqu.Ex{
 				"user_id": userID,
 			},
-			goqu.L("strftime('%Y', date) = ?", strconv.Itoa(year)),
+			goqu.L("CAST(strftime('%Y', date) AS INTEGER) = ?", year),
 			goqu.C("price").Lte(0),
 		).
 		GroupBy(goqu.L("strftime('%m', date)"))
@@ -241,12 +249,12 @@ func (service *TransactionService) GetExpensesMonthlyStatisticsForYears(userID i
 }
 
 type DailyExpenseSummary struct {
-	Day     int     `db:"day"`
-	Count   int     `db:"count"`
-	Total   float64 `db:"sum"`
-	Average float64 `db:"avg"`
-	Max     float64 `db:"max"`
-	Min     float64 `db:"min"`
+	Day     int     `db:"day" json:"day"`
+	Count   int     `db:"count" json:"count"`
+	Sum     float64 `db:"sum" json:"sum"`
+	Average float64 `db:"avg" json:"avg"`
+	Max     float64 `db:"max" json:"max"`
+	Min     float64 `db:"min" json:"min"`
 }
 
 func (service *TransactionService) GetExpensesDailyStatisticsForMonthInYear(userID int, month int, year int) (*[]DailyExpenseSummary, error) {
