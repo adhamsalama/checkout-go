@@ -27,59 +27,6 @@ func main() {
 		fmt.Printf("err: %v\n", err)
 		return
 	}
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer db.Close()
-	// // Create table if not exists
-	// _, err = db.Exec(`
-	// --DROP TABLE IF EXISTS expense;
-	// CREATE TABLE IF NOT EXISTS expense (
-	// 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	// 	user_id TEXT,
-	// 	name TEXT,
-	// 	price REAL,
-	// 	tags JSONB,
-	// 	date DATETIME
-	// );
-	// `)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	//
-	// // Create ExpensesService instance
-	// expenseService := ExpenseService.NewExpensesService(db)
-
-	// Example usage
-	/*_, err = expenseService.CreateExpense("user123", "Lunch", 12.50, []string{"food", "whatever"}, time.Now()())
-	if err != nil {
-		log.Fatal(err)
-	}*/
-	/*
-		priceGte := 12.0
-		expenses, err := expenseService.GetExpenses(ExpenseService.GetExpensesFilter{
-			UserID:   "user123",
-			PriceGte: &priceGte,
-			PriceLte: nil,
-			Limit:    10,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(len(expenses))
-		for _, exp := range expenses {
-			fmt.Println(exp)
-		}
-		stats, err := expenseService.GetStatistics("user123")
-		if err != nil {
-			log.Fatal(err)
-		}
-		for tag, price := range stats {
-			fmt.Println(tag, price)
-		}
-	*/
-	// monthlyStats, _ := expenseService.GetMonthlyStatisticsForAYear("640c709394fd39b646316575", 2024)
-	// fmt.Println(monthlyStats)
 	goquDB := goqu.New("sqlite3", db)
 	_, err = goquDB.Exec(`
 		
@@ -99,68 +46,19 @@ CREATE TABLE IF NOT EXISTS transactions (
 	transactionsService := transactions.TransactionService{
 		DB: goquDB,
 	}
-
-	// migration.MigrateExpensesFromMongoToSql(&transactionsService)
-	// createdTransaction, err := transactionsService.CreateExpense(1, "asd", 120, time.Now(), []string{"hello", "world"})
-	// if err != nil {
-	// 	fmt.Printf("create err: %v\n", err)
-	// 	return
-	// }
-	// fmt.Printf("createdTransaction: %v\n", createdTransaction)
-	// price := -420.0
-	// updateData := transactions.TransactionUpdate{
-	// 	Price: &price,
-	// }
-	// res, err := transactionsService.Update(createdTransaction.ID, createdTransaction.UserID, updateData)
-	// if err != nil {
-	// 	fmt.Printf("update err: %v\n", err)
-	// 	return
-	// }
-	// fmt.Printf("updated res: %v\n", res)
-	// priceGte := 420.0
-	// list, err := transactionsService.List(1, transactions.TransactionList{
-	// 	PriceGte: &priceGte,
-	// })
-	// if err != nil {
-	// 	fmt.Printf("list err: %v\n", err)
-	// 	return
-	// }
-	// fmt.Printf("list: %v\n", list)
-	stats, err := transactionsService.GetExpensesMonthlyStatisticsForYear(1, 2025)
-	if err != nil {
-		fmt.Printf("query err: %v\n", err)
-		return
-	}
-	fmt.Printf("stats: %v\n", stats)
-	yearlystats, err := transactionsService.GetExpensesMonthlyStatisticsForYears(1, 2024, 2025)
-	if err != nil {
-		fmt.Printf("query err: %v\n", err)
-		return
-	}
-	fmt.Printf("stats: %v\n", yearlystats)
-	dailyStats, err := transactionsService.GetExpensesDailyStatisticsForMonthInYear(1, 1, 2025)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		return
-	}
-	fmt.Printf("dailyStats: %v\n", dailyStats)
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
 	}
 
 	go func() {
-		// Serve static files like JS, CSS, images
 		http.Handle("/assets/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// For each request, get the file path from the embedded content
 			filePath := "frontend" + r.URL.Path
 			data, err := content.ReadFile(filePath)
 			if err != nil {
-				// If the file is not found, return 404
 				http.NotFound(w, r)
 				return
 			}
 
-			// Set the appropriate Content-Type for the requested file
 			switch ext := filepath.Ext(r.URL.Path); ext {
 			case ".js":
 				w.Header().Set("Content-Type", "application/javascript")
@@ -208,9 +106,9 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r := chi.NewRouter()
 
 	// A good base middleware stack
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	// r.Use(middleware.RequestID)
+	// r.Use(middleware.RealIP)
+	// r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Post("/expenses", transactionController.CreateExpense)
 	r.Get("/expenses/statistics/yearly/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
