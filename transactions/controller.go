@@ -157,9 +157,7 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 		filters.Limit = &limit
 	}
 	if offsetStr != "" {
-		fmt.Printf("offsetStr: %v\n", offsetStr)
 		offset, err := strconv.Atoi(offsetStr)
-		fmt.Printf("offset: %v\n", offset)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

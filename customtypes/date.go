@@ -50,18 +50,13 @@ func (ct *TimeWrapper) UnmarshalJSON(data []byte) error {
 	if len(str) < 2 {
 		return fmt.Errorf("invalid date format: %s", str)
 	}
-	fmt.Printf("str: %v\n", str)
 	str = str[1 : len(str)-1]
-	fmt.Printf("str: %v\n", str)
-	// fmt.Printf("str: %v\n", str)
-	// Try parsing the date in UTC format
 	t, err := time.Parse(time.RFC3339, str)
 	if err == nil {
 		*ct = TimeWrapper(t)
 		return nil
 	}
 
-	// Try parsing the date in year-month-date format
 	t, err = time.Parse(time.DateOnly, str)
 	if err == nil {
 		*ct = TimeWrapper(t)
