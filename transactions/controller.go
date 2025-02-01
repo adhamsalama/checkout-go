@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"checkout-go/customtypes"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,13 +19,12 @@ type TransactionController struct {
 
 func (c *TransactionController) CreateExpense(w http.ResponseWriter, req *http.Request) {
 	type CreateExpenseBody struct {
-		UserID int       `json:"userId"`
-		Name   string    `json:"name"`
-		Price  float64   `json:"price"`
-		Seller string    `json:"seller"`
-		Note   string    `json:"note"`
-		Date   time.Time `json:"date"`
-		Tags   []string  `json:"tags"`
+		Name   string                  `json:"name"`
+		Price  float64                 `json:"price"`
+		Seller string                  `json:"sellerName"`
+		Note   string                  `json:"comment"`
+		Date   customtypes.TimeWrapper `json:"date"`
+		Tags   []string                `json:"tags"`
 	}
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -37,14 +38,14 @@ func (c *TransactionController) CreateExpense(w http.ResponseWriter, req *http.R
 		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("expense: %v\n", expense)
-	transaction, err := c.TransactionsService.CreateExpense(expense.UserID, expense.Name, expense.Price, expense.Seller, expense.Note, expense.Date, expense.Tags)
+
+	transaction, err := c.TransactionsService.CreateExpense(1, expense.Name, expense.Price, expense.Seller, expense.Note, time.Time(expense.Date), expense.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	// Encode the struct to JSON and write it to the response
+	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(transaction)
 	if err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
@@ -156,13 +157,17 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 		filters.Limit = &limit
 	}
 	if offsetStr != "" {
-		offset, err := strconv.Atoi(limitStr)
+		fmt.Printf("offsetStr: %v\n", offsetStr)
+		offset, err := strconv.Atoi(offsetStr)
+		fmt.Printf("offset: %v\n", offset)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		filters.Offset = &offset
 	}
+	zero := 0.0
+	filters.PriceLte = &zero
 	list, err := c.TransactionsService.List(1, filters)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -184,6 +189,41 @@ func (c *TransactionController) GetBalance(w http.ResponseWriter, req *http.Requ
 	}
 
 	err = json.NewEncoder(w).Encode((balance))
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *TransactionController) CreatePayment(w http.ResponseWriter, req *http.Request) {
+	type CreatePaymentBody struct {
+		Name   string                  `json:"name"`
+		Price  float64                 `json:"price"`
+		Seller string                  `json:"sellerName"`
+		Note   string                  `json:"comment"`
+		Date   customtypes.TimeWrapper `json:"date"`
+		Tags   []string                `json:"tags"`
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		fmt.Printf("could not read body: %s\n", err)
+		http.Error(w, fmt.Sprintf("Something went wrong: %v", err), http.StatusInternalServerError)
+		return
+	}
+	var payment CreatePaymentBody
+	err = json.Unmarshal(body, &payment)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
+		return
+	}
+	transaction, err := c.TransactionsService.CreatePayment(1, payment.Name, payment.Price, payment.Seller, payment.Note, time.Time(payment.Date), payment.Tags)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	// Encode the struct to JSON and write it to the response
+	err = json.NewEncoder(w).Encode(transaction)
 	if err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 		return

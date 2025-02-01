@@ -55,6 +55,9 @@ func (service *TransactionService) CreateExpense(userID int, name string, price 
 }
 
 func (service *TransactionService) CreatePayment(userID int, name string, price float64, seller string, note string, date time.Time, tags []string) (*Transaction, error) {
+	if price < 1 {
+		return nil, fmt.Errorf("payment price cannot be less than 1")
+	}
 	return service.Create(userID, name, price, seller, note, date, tags)
 }
 
@@ -159,11 +162,16 @@ func (service *TransactionService) List(userID int, filters TransactionList) (*[
 		})
 	}
 	if filters.Limit != nil {
-		selectStatement.Limit(uint(*filters.Limit))
+		fmt.Printf("filters.Limit: %v\n", *filters.Limit)
+		selectStatement = selectStatement.Limit(uint(*filters.Limit))
 	}
 	if filters.Offset != nil {
-		selectStatement.Offset(uint(*filters.Offset))
+		fmt.Printf("filters.Offset: %v\n", *filters.Offset)
+		selectStatement = selectStatement.Offset(uint(*filters.Offset))
 	}
+	selectStatement = selectStatement.Order(goqu.L("date").Desc())
+	sql, _, _ := selectStatement.ToSQL()
+	fmt.Printf("selectStatement: %v\n", sql)
 	transactions := []Transaction{}
 	err := selectStatement.ScanStructs(&transactions)
 	if err != nil {
