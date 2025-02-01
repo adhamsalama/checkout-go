@@ -170,8 +170,6 @@ func (service *TransactionService) List(userID int, filters TransactionList) (*[
 		selectStatement = selectStatement.Offset(uint(*filters.Offset))
 	}
 	selectStatement = selectStatement.Order(goqu.L("date").Desc())
-	sql, _, _ := selectStatement.ToSQL()
-	fmt.Printf("selectStatement: %v\n", sql)
 	transactions := []Transaction{}
 	err := selectStatement.ScanStructs(&transactions)
 	if err != nil {
