@@ -198,7 +198,7 @@ func (c *TransactionController) GetBalance(w http.ResponseWriter, req *http.Requ
 func (c *TransactionController) CreatePayment(w http.ResponseWriter, req *http.Request) {
 	type CreatePaymentBody struct {
 		Name   string                  `json:"name"`
-		Price  float64                 `json:"price"`
+		Price  float64                 `json:"value"`
 		Seller string                  `json:"sellerName"`
 		Note   string                  `json:"comment"`
 		Date   customtypes.TimeWrapper `json:"date"`
