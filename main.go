@@ -149,18 +149,50 @@ CREATE TABLE IF NOT EXISTS transactions (
 	}
 
 	go func() {
-		fs := http.FileServer(http.Dir("./frontend")) // Or "./dist" for Vite
-		http.Handle("/assets/", fs)
+		// Serve static files like JS, CSS, images
+		http.Handle("/assets/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// For each request, get the file path from the embedded content
+			filePath := "frontend" + r.URL.Path
+			data, err := content.ReadFile(filePath)
+			if err != nil {
+				// If the file is not found, return 404
+				http.NotFound(w, r)
+				return
+			}
+
+			// Set the appropriate Content-Type for the requested file
+			switch ext := filepath.Ext(r.URL.Path); ext {
+			case ".js":
+				w.Header().Set("Content-Type", "application/javascript")
+			case ".css":
+				w.Header().Set("Content-Type", "text/css")
+			case ".html":
+				w.Header().Set("Content-Type", "text/html")
+			default:
+				w.Header().Set("Content-Type", "application/octet-stream")
+			}
+
+			w.Write(data)
+		}))
 
 		// Fallback handler for non-static routes, serving index.html
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			// Serve index.html for any route that is not a static file
+			// Serve index.html for any route that is not a static file (e.g., React routes)
 			if filepath.Ext(r.URL.Path) == "" {
-				http.ServeFile(w, r, "./frontend/index.html") // Or "./dist/index.html" for Vite
+				// Read the embedded index.html file
+				data, err := content.ReadFile("frontend/index.html")
+				if err != nil {
+					http.NotFound(w, r)
+					return
+				}
+				// Set the appropriate Content-Type and write the file
+				w.Header().Set("Content-Type", "text/html")
+				w.Write(data)
 				return
 			}
+
 			// Default behavior for other static file requests
-			fs.ServeHTTP(w, r)
+			http.ServeFile(w, r, "frontend"+r.URL.Path)
 		})
 
 		port := "8081"
@@ -172,6 +204,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 			log.Fatal(err)
 		}
 	}()
+
 	r := chi.NewRouter()
 
 	// A good base middleware stack
