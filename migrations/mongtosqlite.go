@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"checkout-go/customtypes"
 	Transactions "checkout-go/transactions"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,7 +12,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetMongoExpenses() []Transactions.Transaction {
+type MongoTransaction struct {
+	ID int `db:"id" goqu:"skipinsert" json:"id"`
+	// UserID int                     `db:"user_id" goqu:"omitnil" json:"userId" bson:"userId"` // Comment when running Mongo to SQL migration
+	Name   string                  `db:"name" goqu:"omitnil" json:"name"`
+	Price  float64                 `db:"price" goqu:"omitnil" json:"price"`
+	Seller string                  `db:"seller" goqu:"omitnil" json:"sellerName" bson:"sellerName"`
+	Note   string                  `db:"note" goqu:"omitnil" json:"comment" bson:"comment"`
+	Date   customtypes.TimeWrapper `db:"date" goqu:"omitnil" json:"date"`
+	Tags   customtypes.StringSlice `db:"tags" json:"tags" goqu:"omitnil"`
+}
+
+func GetMongoExpenses() []MongoTransaction {
 	uri := "mongodb://localhost:27017"
 	client, err := mongo.Connect(context.TODO(), options.Client().
 		ApplyURI(uri))
@@ -24,11 +36,11 @@ func GetMongoExpenses() []Transactions.Transaction {
 		}
 	}()
 	coll := client.Database("nest").Collection("expenses")
-	var results []Transactions.Transaction
+	var results []MongoTransaction
 	cursor, err := coll.Find(context.TODO(), bson.D{})
 	if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found ")
-		return []Transactions.Transaction{}
+		return []MongoTransaction{}
 	}
 	if err != nil {
 		panic(err)
