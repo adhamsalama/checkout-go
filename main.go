@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	// migration "checkout-go/migrations"
 	"checkout-go/transactions"
 
 	goqu "github.com/doug-martin/goqu/v9"
@@ -46,6 +47,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 	transactionsService := transactions.TransactionService{
 		DB: goquDB,
 	}
+
+	// migration.MigrateExpensesFromMongoToSql(&transactionsService)
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
 	}
