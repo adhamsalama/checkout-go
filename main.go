@@ -1,9 +1,11 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"log"
 	"net/http"
-	"time"
+	"path/filepath"
 
 	"checkout-go/transactions"
 
@@ -14,6 +16,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+//go:embed frontend/*
+var content embed.FS
 
 func main() {
 	// Initialize SQLite database
@@ -75,7 +80,6 @@ func main() {
 	*/
 	// monthlyStats, _ := expenseService.GetMonthlyStatisticsForAYear("640c709394fd39b646316575", 2024)
 	// fmt.Println(monthlyStats)
-	// migration.MigrateExpensesFromMongoToSql(*expenseService)
 	goquDB := goqu.New("sqlite3", db)
 	_, err = goquDB.Exec(`
 		
@@ -95,27 +99,82 @@ CREATE TABLE IF NOT EXISTS transactions (
 	transactionsService := transactions.TransactionService{
 		DB: goquDB,
 	}
-	createdTransaction, err := transactionsService.Create(1, "asd", 120, time.Now(), []string{})
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
 
+	// migration.MigrateExpensesFromMongoToSql(&transactionsService)
+	// createdTransaction, err := transactionsService.CreateExpense(1, "asd", 120, time.Now(), []string{"hello", "world"})
+	// if err != nil {
+	// 	fmt.Printf("create err: %v\n", err)
+	// 	return
+	// }
+	// fmt.Printf("createdTransaction: %v\n", createdTransaction)
+	// price := -420.0
+	// updateData := transactions.TransactionUpdate{
+	// 	Price: &price,
+	// }
+	// res, err := transactionsService.Update(createdTransaction.ID, createdTransaction.UserID, updateData)
+	// if err != nil {
+	// 	fmt.Printf("update err: %v\n", err)
+	// 	return
+	// }
+	// fmt.Printf("updated res: %v\n", res)
+	// priceGte := 420.0
+	// list, err := transactionsService.List(1, transactions.TransactionList{
+	// 	PriceGte: &priceGte,
+	// })
+	// if err != nil {
+	// 	fmt.Printf("list err: %v\n", err)
+	// 	return
+	// }
+	// fmt.Printf("list: %v\n", list)
+	stats, err := transactionsService.GetExpensesMonthlyStatisticsForYear(1, 2025)
+	if err != nil {
+		fmt.Printf("query err: %v\n", err)
 		return
 	}
-	fmt.Printf("createdTransaction: %v\n", createdTransaction)
-	price := 420.0
-	updateData := Transactions.TransactionUpdate{
-		Price: &price,
+	fmt.Printf("stats: %v\n", stats)
+	yearlystats, err := transactionsService.GetExpensesMonthlyStatisticsForYears(1, 2024, 2025)
+	if err != nil {
+		fmt.Printf("query err: %v\n", err)
+		return
 	}
-	res, err := transactionsService.Update(createdTransaction.ID, createdTransaction.UserID, updateData)
+	fmt.Printf("stats: %v\n", yearlystats)
+	dailyStats, err := transactionsService.GetExpensesDailyStatisticsForMonthInYear(1, 1, 2025)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		return
 	}
-	fmt.Printf("res: %v\n", res)
+	fmt.Printf("dailyStats: %v\n", dailyStats)
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
 	}
+
+	go func() {
+		fs := http.FileServer(http.Dir("./frontend")) // Or "./dist" for Vite
+		http.Handle("/assets/", fs)
+
+		// Fallback handler for non-static routes, serving index.html
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// Serve index.html for any route that is not a static file
+			if filepath.Ext(r.URL.Path) == "" {
+				http.ServeFile(w, r, "./frontend/index.html") // Or "./dist/index.html" for Vite
+				return
+			}
+			// Default behavior for other static file requests
+			fs.ServeHTTP(w, r)
+		})
+
+		port := "8081"
+		log.Println("Starting server on http://localhost:" + port)
+
+		// Start the HTTP server in a goroutine so it doesn't block
+		err := http.ListenAndServe(":"+port, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 	r := chi.NewRouter()
+
+	// A good base middleware stack
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -126,6 +185,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
 	r.Get("/expenses/statistics", transactionController.GetTagsStatistics)
 	r.Get("/expenses", transactionController.ListExpenses)
+	r.Get("/balance", transactionController.GetBalance)
+	r.Post("/payments", transactionController.CreatePayment)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }
