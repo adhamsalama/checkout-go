@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	// r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Post("/expenses", transactionController.CreateExpense)
+	r.Put("/expenses/{id}", transactionController.UpdateExpense)
 	r.Get("/expenses/statistics/yearly/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
 	r.Get("/expenses/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
 	r.Get("/transactions/{id}", transactionController.GetTransactionByID)

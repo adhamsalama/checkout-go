@@ -62,13 +62,15 @@ func (service *TransactionService) CreatePayment(userID int, name string, price 
 }
 
 type TransactionUpdate struct {
-	Name  *string    `json:"name,omitempty"`
-	Price *float64   `json:"price,omitempty"`
-	Tags  *[]string  `json:"tags,omitempty"`
-	Date  *time.Time `json:"date,omitempty"`
+	Name   *string                  `json:"name,omitempty"`
+	Price  *float64                 `json:"price,omitempty"`
+	Seller *string                  `json:"sellerName,omitempty"`
+	Note   *string                  `json:"comment,omitempty"`
+	Date   *customtypes.TimeWrapper `json:"date,omitempty"`
+	Tags   *[]string                `json:"tags,omitempty"`
 }
 
-func (service *TransactionService) Update(ID int, userID int, updateData TransactionUpdate) (*Transaction, error) {
+func (service *TransactionService) Update(userID, ID int, updateData TransactionUpdate) (*Transaction, error) {
 	fields := map[string]any{}
 
 	if updateData.Name != nil {
@@ -86,7 +88,7 @@ func (service *TransactionService) Update(ID int, userID int, updateData Transac
 		fields["tags"] = string(tagsJSON)
 	}
 	if updateData.Date != nil {
-		fields["date"] = updateData.Date.Format(time.RFC3339)
+		fields["date"] = updateData.Date.Time().Format(time.RFC3339)
 	}
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("no fields to update")
@@ -162,11 +164,9 @@ func (service *TransactionService) List(userID int, filters TransactionList) (*[
 		})
 	}
 	if filters.Limit != nil {
-		fmt.Printf("filters.Limit: %v\n", *filters.Limit)
 		selectStatement = selectStatement.Limit(uint(*filters.Limit))
 	}
 	if filters.Offset != nil {
-		fmt.Printf("filters.Offset: %v\n", *filters.Offset)
 		selectStatement = selectStatement.Offset(uint(*filters.Offset))
 	}
 	selectStatement = selectStatement.Order(goqu.L("date").Desc())
@@ -291,11 +291,9 @@ func (service *TransactionService) GetExpensesDailyStatisticsForMonthInYear(user
 		Order(goqu.I("day").Asc())
 	var summaries []DailyExpenseSummary
 	if err := selectStatement.ScanStructs(&summaries); err != nil {
-		fmt.Printf("err: %v\n", err)
 		return nil, err
 	}
 	daysInMonth := daysInMonth(month, year)
-	fmt.Printf("daysInMonth: %v\n", daysInMonth)
 	if len(summaries) == daysInMonth {
 		return &summaries, nil
 	}
@@ -308,7 +306,6 @@ func (service *TransactionService) GetExpensesDailyStatisticsForMonthInYear(user
 		_, ok := daysMap[dayIndex]
 		if !ok {
 			daysMap[dayIndex] = DailyExpenseSummary{Day: dayIndex}
-			fmt.Printf("day not eixts %v\n", dayIndex)
 		}
 	}
 	var fullDaySummaries []DailyExpenseSummary
@@ -319,9 +316,6 @@ func (service *TransactionService) GetExpensesDailyStatisticsForMonthInYear(user
 	sort.Slice(fullDaySummaries, func(i, j int) bool {
 		return fullDaySummaries[i].Day < fullDaySummaries[j].Day
 	})
-	for _, des := range fullDaySummaries {
-		fmt.Printf("i: %v, v: %v\n", des.Day, des)
-	}
 	return &fullDaySummaries, nil
 }
 
