@@ -264,3 +264,24 @@ func (c *TransactionController) UpdateExpense(w http.ResponseWriter, req *http.R
 		return
 	}
 }
+
+func (c *TransactionController) DeleteExpense(w http.ResponseWriter, req *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(req, "id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+	userID := 1
+	transaction, err := c.TransactionsService.DeleteTransaction(userID, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(transaction)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

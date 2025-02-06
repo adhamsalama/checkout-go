@@ -364,6 +364,29 @@ func (service *TransactionService) GetBalance(userID int) (float64, error) {
 	return balance, nil
 }
 
+func (service *TransactionService) DeleteTransaction(userID int, id int) (*Transaction, error) {
+	var transaction Transaction
+	found, err := service.DB.From("transactions").
+		Where(
+			goqu.Ex{"user_id": userID, "id": id},
+		).ScanStruct(&transaction)
+	if err != nil {
+		fmt.Printf("delete expense err: %v\n", err)
+		return nil, err
+	}
+	if !found {
+		fmt.Printf("delete transaction not found for id %v", id)
+	}
+	_, err = service.DB.From("transactions").Delete().Where(
+		goqu.Ex{"user_id": userID, "id": id},
+	).Executor().Exec()
+	if err != nil {
+		fmt.Printf("delete expense err: %v\n", err)
+		return nil, err
+	}
+	return &transaction, nil
+}
+
 // Returns the number of days in a month for a given year.
 func daysInMonth(m int, year int) int {
 	return time.Date(year, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()
