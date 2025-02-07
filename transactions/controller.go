@@ -146,8 +146,25 @@ func (c *TransactionController) GetTagsStatistics(w http.ResponseWriter, req *ht
 func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Request) {
 	limitStr := req.URL.Query().Get("limit")
 	offsetStr := req.URL.Query().Get("offset")
-
+	startDateStr := req.URL.Query().Get("startDate")
+	var startDate customtypes.TimeWrapper
+	startDateErr := startDate.Scan(startDateStr)
+	if startDateErr != nil {
+		fmt.Printf("list expense startDate err: %v\n", startDateErr)
+	}
+	endDateStr := req.URL.Query().Get("endDate")
+	var endDate customtypes.TimeWrapper
+	endDateErr := endDate.Scan(endDateStr)
+	if endDateErr != nil {
+		fmt.Printf("list expense endDate err: %v\n", endDateErr)
+	}
 	var filters TransactionList
+	if startDateStr != "" {
+		filters.DateGte = (*time.Time)(&startDate)
+	}
+	if endDateStr != "" {
+		filters.DateLte = (*time.Time)(&endDate)
+	}
 	if limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil {
