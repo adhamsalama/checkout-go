@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Get("/expenses", transactionController.ListExpenses)
 	r.Get("/balance", transactionController.GetBalance)
 	r.Post("/payments", transactionController.CreatePayment)
+	r.Put("/payments/{id}", transactionController.UpdatePayment)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }

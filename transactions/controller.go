@@ -265,6 +265,43 @@ func (c *TransactionController) UpdateExpense(w http.ResponseWriter, req *http.R
 	}
 }
 
+func (c *TransactionController) UpdatePayment(w http.ResponseWriter, req *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(req, "id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		fmt.Printf("could not read body: %s\n", err)
+		http.Error(w, fmt.Sprintf("Something went wrong: %v", err), http.StatusInternalServerError)
+		return
+	}
+	var payment TransactionUpdate
+	err = json.Unmarshal(body, &payment)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
+		return
+	}
+	if *payment.Price <= 0 {
+		http.Error(w, fmt.Sprintf("Payment price cannot be lower than or equal to 0: %v", *payment.Price), http.StatusBadRequest)
+		return
+	}
+	userID := 1
+	transaction, err := c.TransactionsService.Update(userID, id, payment)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(transaction)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (c *TransactionController) DeleteExpense(w http.ResponseWriter, req *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(req, "id"))
 	if err != nil {
