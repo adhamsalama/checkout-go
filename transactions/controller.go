@@ -179,6 +179,43 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 	}
 }
 
+func (c *TransactionController) ListPayments(w http.ResponseWriter, req *http.Request) {
+	limitStr := req.URL.Query().Get("limit")
+	offsetStr := req.URL.Query().Get("offset")
+
+	var filters TransactionList
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		filters.Limit = &limit
+	}
+	if offsetStr != "" {
+		offset, err := strconv.Atoi(offsetStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		filters.Offset = &offset
+	}
+	// To Lazy to add PriceGt
+	almostZero := 0.0000001
+	filters.PriceGte = &almostZero
+	list, err := c.TransactionsService.List(1, filters)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode((*list))
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (c *TransactionController) GetBalance(w http.ResponseWriter, req *http.Request) {
 	balance, err := c.TransactionsService.GetBalance(1)
 	if err != nil {
@@ -283,7 +320,7 @@ func (c *TransactionController) UpdatePayment(w http.ResponseWriter, req *http.R
 		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
 		return
 	}
-	if *payment.Price <= 0 {
+	if payment.Price != nil && *payment.Price <= 0 {
 		http.Error(w, fmt.Sprintf("Payment price cannot be lower than or equal to 0: %v", *payment.Price), http.StatusBadRequest)
 		return
 	}
