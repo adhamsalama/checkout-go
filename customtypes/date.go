@@ -21,6 +21,11 @@ func (t *TimeWrapper) Scan(value any) error {
 		return fmt.Errorf("unsupported type: %T", value)
 	}
 	parsedTime, err := time.Parse("2006-01-02T15:04:05Z", strValue)
+	if err == nil {
+		*t = TimeWrapper(parsedTime)
+		return nil
+	}
+	parsedTime, err = time.Parse(time.DateOnly, strValue)
 	if err != nil {
 		return fmt.Errorf("failed to parse time: %v", err)
 	}
