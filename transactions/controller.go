@@ -147,6 +147,7 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 	limitStr := req.URL.Query().Get("limit")
 	offsetStr := req.URL.Query().Get("offset")
 	startDateStr := req.URL.Query().Get("startDate")
+	tags := req.URL.Query()["tags"]
 	var startDate customtypes.TimeWrapper
 	startDateErr := startDate.Scan(startDateStr)
 	if startDateErr != nil {
@@ -159,6 +160,9 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 		fmt.Printf("list expense endDate err: %v\n", endDateErr)
 	}
 	var filters TransactionList
+	if len(tags) > 0 {
+		filters.Tags = &tags
+	}
 	if startDateStr != "" {
 		filters.DateGte = (*time.Time)(&startDate)
 	}
