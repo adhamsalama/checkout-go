@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	// migration "checkout-go/migrations"
+	"checkout-go/budgets"
 	"checkout-go/transactions"
 
 	goqu "github.com/doug-martin/goqu/v9"
@@ -51,6 +52,14 @@ CREATE TABLE IF NOT EXISTS transactions (
 	// migration.MigrateExpensesFromMongoToSql(&transactionsService)
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
+	}
+
+	budgetsService := budgets.BudgetService{
+		DB: goquDB,
+	}
+
+	budgetsController := budgets.BudgetsController{
+		BudgetService: budgetsService,
 	}
 
 	go func() {
@@ -125,6 +134,10 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Post("/payments", transactionController.CreatePayment)
 	r.Get("/payments", transactionController.ListPayments)
 	r.Put("/payments/{id}", transactionController.UpdatePayment)
+	r.Post("/budgets/monthly", budgetsController.CreateMonthlyBudget)
+	r.Get("/budgets/monthly", budgetsController.GetMonthlyBudget)
+	r.Put("/budgets/monthly", budgetsController.UpdateMonthlyBudget)
+	r.Delete("/budgets/monthly", budgetsController.DeleteMonthlyBudget)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }
