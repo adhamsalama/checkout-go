@@ -2,6 +2,8 @@ package budgets
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -63,7 +65,7 @@ func (service *BudgetService) DeleteMonthlyBudget(userID int64) (*queries.Monthl
 	q := queries.New(service.DB)
 	monthlyBudget, err := q.GetMonthlyBudget(context.Background(), userID)
 	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no monthly budget found")
 		}
 		return nil, err
