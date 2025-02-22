@@ -76,3 +76,61 @@ func (service *BudgetService) DeleteMonthlyBudget(userID int64) (*queries.Monthl
 	}
 	return &monthlyBudget, nil
 }
+
+func (service *BudgetService) CreateTaggedBudget(userID int64, name string, value float64, interval int64, tag string) (*queries.TaggedBudget, error) {
+	q := queries.New(service.DB)
+	params := queries.CreateTaggedBudgetParams{
+		UserID:         userID,
+		Name:           name,
+		Value:          value,
+		IntervalInDays: interval,
+		Tag:            tag,
+		Date:           time.Now().Format(time.RFC3339),
+	}
+	budget, err := q.CreateTaggedBudget(context.Background(), params)
+	if err != nil {
+		return nil, err
+	}
+	return &budget, nil
+}
+
+func (service *BudgetService) GetTaggedBudgets(userID int64) ([]queries.TaggedBudget, error) {
+	q := queries.New(service.DB)
+	budgets, err := q.GetTaggedBudgets(context.Background(), userID)
+	fmt.Printf("budgets: %v\n", budgets)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []queries.TaggedBudget{}, nil
+		}
+		return nil, err
+	}
+	// I hate whoever thought treating nil slices as empty slices was a good idea to bake into the type system
+	if budgets == nil {
+		budgets = []queries.TaggedBudget{}
+	}
+	return budgets, nil
+}
+
+func (service *BudgetService) DeleteTaggedBudget(userID int64, budgetID int64) (*queries.TaggedBudget, error) {
+	q := queries.New(service.DB)
+	getBudgetparams := queries.GetTaggedBudgetParams{
+		UserID: userID,
+		ID:     budgetID,
+	}
+	budget, err := q.GetTaggedBudget(context.Background(), getBudgetparams)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("no tagged budget found")
+		}
+		return nil, err
+	}
+	deleteBudgetParams := queries.DeleteTaggedBudgetParams{
+		UserID: userID,
+		ID:     budgetID,
+	}
+	deleteErr := q.DeleteTaggedBudget(context.Background(), deleteBudgetParams)
+	if deleteErr != nil {
+		return nil, deleteErr
+	}
+	return &budget, nil
+}

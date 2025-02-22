@@ -19,7 +19,7 @@ RETURNING id, user_id, name, value, date
 `
 
 type CreateMonthlyBudgetParams struct {
-	UserID int64   `json:"user_id"`
+	UserID int64   `json:"userId"`
 	Name   string  `json:"name"`
 	Value  float64 `json:"value"`
 	Date   string  `json:"date"`
@@ -43,12 +43,66 @@ func (q *Queries) CreateMonthlyBudget(ctx context.Context, arg CreateMonthlyBudg
 	return i, err
 }
 
+const createTaggedBudget = `-- name: CreateTaggedBudget :one
+INSERT INTO tagged_budgets (
+  user_id, name, value, interval_in_days, tag, date
+) VALUES (
+  ?, ?, ?, ?, ?, ?
+)
+RETURNING id, user_id, name, value, interval_in_days, tag, date
+`
+
+type CreateTaggedBudgetParams struct {
+	UserID         int64   `json:"userId"`
+	Name           string  `json:"name"`
+	Value          float64 `json:"value"`
+	IntervalInDays int64   `json:"intervalInDays"`
+	Tag            string  `json:"tag"`
+	Date           string  `json:"date"`
+}
+
+func (q *Queries) CreateTaggedBudget(ctx context.Context, arg CreateTaggedBudgetParams) (TaggedBudget, error) {
+	row := q.db.QueryRowContext(ctx, createTaggedBudget,
+		arg.UserID,
+		arg.Name,
+		arg.Value,
+		arg.IntervalInDays,
+		arg.Tag,
+		arg.Date,
+	)
+	var i TaggedBudget
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Value,
+		&i.IntervalInDays,
+		&i.Tag,
+		&i.Date,
+	)
+	return i, err
+}
+
 const deleteMonthlyBudget = `-- name: DeleteMonthlyBudget :exec
 DELETE FROM monthly_budgets WHERE user_id = ?
 `
 
 func (q *Queries) DeleteMonthlyBudget(ctx context.Context, userID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteMonthlyBudget, userID)
+	return err
+}
+
+const deleteTaggedBudget = `-- name: DeleteTaggedBudget :exec
+DELETE FROM tagged_budgets WHERE user_id = ? AND id = ?
+`
+
+type DeleteTaggedBudgetParams struct {
+	UserID int64 `json:"userId"`
+	ID     int64 `json:"id"`
+}
+
+func (q *Queries) DeleteTaggedBudget(ctx context.Context, arg DeleteTaggedBudgetParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTaggedBudget, arg.UserID, arg.ID)
 	return err
 }
 
@@ -70,6 +124,67 @@ func (q *Queries) GetMonthlyBudget(ctx context.Context, userID int64) (MonthlyBu
 	return i, err
 }
 
+const getTaggedBudget = `-- name: GetTaggedBudget :one
+SELECT id, user_id, name, value, interval_in_days, tag, date FROM tagged_budgets
+WHERE user_id = ? AND id = ?
+`
+
+type GetTaggedBudgetParams struct {
+	UserID int64 `json:"userId"`
+	ID     int64 `json:"id"`
+}
+
+func (q *Queries) GetTaggedBudget(ctx context.Context, arg GetTaggedBudgetParams) (TaggedBudget, error) {
+	row := q.db.QueryRowContext(ctx, getTaggedBudget, arg.UserID, arg.ID)
+	var i TaggedBudget
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Value,
+		&i.IntervalInDays,
+		&i.Tag,
+		&i.Date,
+	)
+	return i, err
+}
+
+const getTaggedBudgets = `-- name: GetTaggedBudgets :many
+SELECT id, user_id, name, value, interval_in_days, tag, date FROM tagged_budgets
+WHERE user_id = ?
+`
+
+func (q *Queries) GetTaggedBudgets(ctx context.Context, userID int64) ([]TaggedBudget, error) {
+	rows, err := q.db.QueryContext(ctx, getTaggedBudgets, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TaggedBudget
+	for rows.Next() {
+		var i TaggedBudget
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Value,
+			&i.IntervalInDays,
+			&i.Tag,
+			&i.Date,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateMonthlyBudget = `-- name: UpdateMonthlyBudget :exec
 UPDATE monthly_budgets
 SET name = ?, value = ?
@@ -80,7 +195,7 @@ RETURNING id, user_id, name, value, date
 type UpdateMonthlyBudgetParams struct {
 	Name   string  `json:"name"`
 	Value  float64 `json:"value"`
-	UserID int64   `json:"user_id"`
+	UserID int64   `json:"userId"`
 }
 
 func (q *Queries) UpdateMonthlyBudget(ctx context.Context, arg UpdateMonthlyBudgetParams) error {

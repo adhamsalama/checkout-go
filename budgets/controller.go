@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	dto "checkout-go/budgets/dtos"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type BudgetsController struct {
@@ -93,6 +96,71 @@ func (c *BudgetsController) DeleteMonthlyBudget(w http.ResponseWriter, req *http
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(monthlyBudget)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		fmt.Printf("could not read body: %s\n", err)
+		http.Error(w, fmt.Sprintf("Something went wrong: %v", err), http.StatusInternalServerError)
+		return
+	}
+	var budget dto.CreateTaggedBudgetDTO
+	err = json.Unmarshal(body, &budget)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	monthlyBudget, err := c.BudgetService.CreateTaggedBudget(1, budget.Name, budget.Value, budget.IntervalInDays, budget.Tag)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(monthlyBudget)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *BudgetsController) GetTaggedBudgets(w http.ResponseWriter, req *http.Request) {
+	budgets, err := c.BudgetService.GetTaggedBudgets(1)
+	fmt.Printf("budgets controller: %v\n", budgets)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(budgets)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *BudgetsController) DeleteTaggedBudget(w http.ResponseWriter, req *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(req, "id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+	var userID int64 = 1
+	transaction, err := c.BudgetService.DeleteTaggedBudget(userID, int64(id))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(transaction)
 	if err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 		return

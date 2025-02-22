@@ -6,8 +6,18 @@ package budgets
 
 type MonthlyBudget struct {
 	ID     int64   `json:"id"`
-	UserID int64   `json:"user_id"`
+	UserID int64   `json:"userId"`
 	Name   string  `json:"name"`
 	Value  float64 `json:"value"`
 	Date   string  `json:"date"`
+}
+
+type TaggedBudget struct {
+	ID             int64   `json:"id"`
+	UserID         int64   `json:"userId"`
+	Name           string  `json:"name"`
+	Value          float64 `json:"value"`
+	IntervalInDays int64   `json:"intervalInDays"`
+	Tag            string  `json:"tag"`
+	Date           string  `json:"date"`
 }
