@@ -32,6 +32,7 @@ func (c *BudgetsController) CreateMonthlyBudget(w http.ResponseWriter, req *http
 
 	monthlyBudget, err := c.BudgetService.CreateMonthylBudget(1, budget.Name, budget.Value)
 	if err != nil {
+		fmt.Printf("err: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -118,6 +119,7 @@ func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.
 
 	monthlyBudget, err := c.BudgetService.CreateTaggedBudget(1, budget.Name, budget.Value, budget.IntervalInDays, budget.Tag)
 	if err != nil {
+		fmt.Printf("err: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -132,7 +134,6 @@ func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.
 
 func (c *BudgetsController) GetTaggedBudgets(w http.ResponseWriter, req *http.Request) {
 	budgets, err := c.BudgetService.GetTaggedBudgets(1)
-	fmt.Printf("budgets controller: %v\n", budgets)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
