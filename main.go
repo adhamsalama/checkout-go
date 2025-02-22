@@ -139,6 +139,10 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Get("/budgets/monthly", budgetsController.GetMonthlyBudget)
 	r.Put("/budgets/monthly", budgetsController.UpdateMonthlyBudget)
 	r.Delete("/budgets/monthly", budgetsController.DeleteMonthlyBudget)
+	r.Get("/budgets/tagged", budgetsController.GetTaggedBudgets)
+	r.Post("/budgets/tagged", budgetsController.CreateTaggedBudget)
+	r.Delete("/budgets/tagged/{id}", budgetsController.DeleteTaggedBudget)
+	r.Get("/budgets/tagged/stats", budgetsController.GetTaggedBudgetStats)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }

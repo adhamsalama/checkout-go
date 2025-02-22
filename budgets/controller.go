@@ -166,3 +166,19 @@ func (c *BudgetsController) DeleteTaggedBudget(w http.ResponseWriter, req *http.
 		return
 	}
 }
+
+func (c *BudgetsController) GetTaggedBudgetStats(w http.ResponseWriter, req *http.Request) {
+	budgetStats, err := c.BudgetService.GetTaggedBudgetsStats(1)
+	fmt.Printf("budgets controller: %v\n", budgetStats)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(budgetStats)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

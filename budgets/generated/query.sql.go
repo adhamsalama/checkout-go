@@ -7,6 +7,7 @@ package budgets
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createMonthlyBudget = `-- name: CreateMonthlyBudget :one
@@ -147,6 +148,63 @@ func (q *Queries) GetTaggedBudget(ctx context.Context, arg GetTaggedBudgetParams
 		&i.Date,
 	)
 	return i, err
+}
+
+const getTaggedBudgetStats = `-- name: GetTaggedBudgetStats :many
+SELECT 
+    b.id, 
+    b.name, 
+    b.value,
+    b.interval_in_days,
+    SUM(t.price) AS total_price
+FROM tagged_budgets b
+JOIN transactions t ON EXISTS (
+    SELECT 1
+    FROM json_each(t.tags)
+    WHERE json_each.value = b.tag
+)
+WHERE 
+    b.user_id = ?
+    AND t.price < 0
+    AND t.date >= DATE('now', '-' || b.interval_in_days || ' days')
+GROUP BY b.id, b.name, b.value
+`
+
+type GetTaggedBudgetStatsRow struct {
+	ID             int64           `json:"id"`
+	Name           string          `json:"name"`
+	Value          float64         `json:"value"`
+	IntervalInDays int64           `json:"intervalInDays"`
+	TotalPrice     sql.NullFloat64 `json:"totalPrice"`
+}
+
+func (q *Queries) GetTaggedBudgetStats(ctx context.Context, userID int64) ([]GetTaggedBudgetStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTaggedBudgetStats, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTaggedBudgetStatsRow
+	for rows.Next() {
+		var i GetTaggedBudgetStatsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Value,
+			&i.IntervalInDays,
+			&i.TotalPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTaggedBudgets = `-- name: GetTaggedBudgets :many

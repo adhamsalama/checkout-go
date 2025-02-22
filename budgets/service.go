@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	dtos "checkout-go/budgets/dtos"
 	queries "checkout-go/budgets/generated"
 
 	goqu "github.com/doug-martin/goqu/v9"
@@ -133,4 +134,34 @@ func (service *BudgetService) DeleteTaggedBudget(userID int64, budgetID int64) (
 		return nil, deleteErr
 	}
 	return &budget, nil
+}
+
+func (service *BudgetService) GetTaggedBudgetsStats(userID int64) ([]dtos.GetTaggedBudgetStatsDTO, error) {
+	q := queries.New(service.DB)
+	budgets, err := q.GetTaggedBudgetStats(context.Background(), userID)
+	budgetsDTO := []dtos.GetTaggedBudgetStatsDTO{}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return budgetsDTO, nil
+		}
+		return nil, err
+	}
+	// I hate whoever thought treating nil slices as empty slices was a good idea to bake into the type system
+	if budgets == nil {
+		return budgetsDTO, nil
+	}
+	for _, stat := range budgets {
+		var totalPrice float64 = 0
+		if stat.TotalPrice.Valid {
+			totalPrice = stat.TotalPrice.Float64
+		}
+		budgetsDTO = append(budgetsDTO, dtos.GetTaggedBudgetStatsDTO{
+			ID:             stat.ID,
+			Name:           stat.Name,
+			Value:          stat.Value,
+			IntervalInDays: stat.IntervalInDays,
+			TotalPrice:     totalPrice,
+		})
+	}
+	return budgetsDTO, nil
 }
