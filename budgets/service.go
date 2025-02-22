@@ -138,7 +138,11 @@ func (service *BudgetService) DeleteTaggedBudget(userID int64, budgetID int64) (
 
 func (service *BudgetService) GetTaggedBudgetsStats(userID int64) ([]dtos.GetTaggedBudgetStatsDTO, error) {
 	q := queries.New(service.DB)
-	budgets, err := q.GetTaggedBudgetStats(context.Background(), userID)
+	params := queries.GetTaggedBudgetStatsParams{
+		UserID:   userID,
+		UserID_2: userID,
+	}
+	budgets, err := q.GetTaggedBudgetStats(context.Background(), params)
 	budgetsDTO := []dtos.GetTaggedBudgetStatsDTO{}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

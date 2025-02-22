@@ -169,7 +169,6 @@ func (c *BudgetsController) DeleteTaggedBudget(w http.ResponseWriter, req *http.
 
 func (c *BudgetsController) GetTaggedBudgetStats(w http.ResponseWriter, req *http.Request) {
 	budgetStats, err := c.BudgetService.GetTaggedBudgetsStats(1)
-	fmt.Printf("budgets controller: %v\n", budgetStats)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
