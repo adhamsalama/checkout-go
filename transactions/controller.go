@@ -380,3 +380,19 @@ func (c *TransactionController) DeleteExpense(w http.ResponseWriter, req *http.R
 		return
 	}
 }
+
+func (c *TransactionController) GetExpensesSumForCurrentMonth(w http.ResponseWriter, req *http.Request) {
+	var userID int64 = 1
+	transaction, err := c.TransactionsService.GetSumOfExpensesForCurrentMonth(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(transaction)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

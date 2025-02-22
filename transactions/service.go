@@ -2,13 +2,16 @@ package transactions
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"time"
 
 	"checkout-go/customtypes"
+	queries "checkout-go/transactions/generated"
 
 	goqu "github.com/doug-martin/goqu/v9"
 )
@@ -385,6 +388,23 @@ func (service *TransactionService) DeleteTransaction(userID int, id int) (*Trans
 		return nil, err
 	}
 	return &transaction, nil
+}
+
+func (service *TransactionService) GetSumOfExpensesForCurrentMonth(userID int64) (float64, error) {
+	q := queries.New(service.DB)
+	timeNow := time.Now()
+	year := strconv.Itoa(timeNow.Year())
+	month := strconv.Itoa(int(timeNow.Month()))
+	fmt.Printf("year: %v\n", year)
+	fmt.Printf("month: %v\n", month)
+	sum, err := q.GetSumOfExpensesOfAMonth(context.Background(), queries.GetSumOfExpensesOfAMonthParams{UserID: userID, Date: year, Date_2: month})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return sum.Float64, nil
 }
 
 // Returns the number of days in a month for a given year.

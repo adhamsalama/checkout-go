@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Delete("/expenses/{id}", transactionController.DeleteExpense)
 	r.Get("/expenses/statistics/yearly/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
 	r.Get("/expenses/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
+	r.Get("/expenses/current-month-sum", transactionController.GetExpensesSumForCurrentMonth)
 	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
 	r.Get("/expenses/statistics", transactionController.GetTagsStatistics)
 	r.Get("/expenses", transactionController.ListExpenses)
