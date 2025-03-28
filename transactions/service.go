@@ -395,8 +395,6 @@ func (service *TransactionService) GetSumOfExpensesForCurrentMonth(userID int64)
 	timeNow := time.Now()
 	year := strconv.Itoa(timeNow.Year())
 	month := strconv.Itoa(int(timeNow.Month()))
-	fmt.Printf("year: %v\n", year)
-	fmt.Printf("month: %v\n", month)
 	sum, err := q.GetSumOfExpensesOfAMonth(context.Background(), queries.GetSumOfExpensesOfAMonthParams{UserID: userID, Date: year, Date_2: month})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

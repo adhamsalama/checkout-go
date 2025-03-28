@@ -98,7 +98,6 @@ func (service *BudgetService) CreateTaggedBudget(userID int64, name string, valu
 func (service *BudgetService) GetTaggedBudgets(userID int64) ([]queries.TaggedBudget, error) {
 	q := queries.New(service.DB)
 	budgets, err := q.GetTaggedBudgets(context.Background(), userID)
-	fmt.Printf("budgets: %v\n", budgets)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return []queries.TaggedBudget{}, nil
