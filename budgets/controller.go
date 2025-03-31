@@ -117,7 +117,7 @@ func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.
 		return
 	}
 
-	monthlyBudget, err := c.BudgetService.CreateTaggedBudget(1, budget.Name, budget.Value, budget.IntervalInDays, budget.Tag)
+	monthlyBudget, err := c.BudgetService.CreateTaggedBudget(1, budget.Name, budget.Value, budget.Tag)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -177,6 +177,39 @@ func (c *BudgetsController) GetTaggedBudgetStats(w http.ResponseWriter, req *htt
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(budgetStats)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *BudgetsController) UpdateTaggedBudget(w http.ResponseWriter, req *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(req, "id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		fmt.Printf("could not read body: %s\n", err)
+		http.Error(w, fmt.Sprintf("Something went wrong: %v", err), http.StatusInternalServerError)
+		return
+	}
+	var budget dto.UpdateTaggedBudgetDTO
+	err = json.Unmarshal(body, &budget)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
+		return
+	}
+	var userID int64 = 1
+	updatedBudget, err := c.BudgetService.UpdateTaggedBudget(userID, int64(id), budget.Name, budget.Value, budget.Tag)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(updatedBudget)
 	if err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 		return

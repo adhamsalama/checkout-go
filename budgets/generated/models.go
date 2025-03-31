@@ -17,13 +17,12 @@ type MonthlyBudget struct {
 }
 
 type TaggedBudget struct {
-	ID             int64   `json:"id"`
-	UserID         int64   `json:"userId"`
-	Name           string  `json:"name"`
-	Value          float64 `json:"value"`
-	IntervalInDays int64   `json:"intervalInDays"`
-	Tag            string  `json:"tag"`
-	Date           string  `json:"date"`
+	ID     int64   `json:"id"`
+	UserID int64   `json:"userId"`
+	Name   string  `json:"name"`
+	Value  float64 `json:"value"`
+	Tag    string  `json:"tag"`
+	Date   string  `json:"date"`
 }
 
 type Transaction struct {

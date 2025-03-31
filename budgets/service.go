@@ -78,15 +78,14 @@ func (service *BudgetService) DeleteMonthlyBudget(userID int64) (*queries.Monthl
 	return &monthlyBudget, nil
 }
 
-func (service *BudgetService) CreateTaggedBudget(userID int64, name string, value float64, interval int64, tag string) (*queries.TaggedBudget, error) {
+func (service *BudgetService) CreateTaggedBudget(userID int64, name string, value float64, tag string) (*queries.TaggedBudget, error) {
 	q := queries.New(service.DB)
 	params := queries.CreateTaggedBudgetParams{
-		UserID:         userID,
-		Name:           name,
-		Value:          value,
-		IntervalInDays: interval,
-		Tag:            tag,
-		Date:           time.Now().Format(time.RFC3339),
+		UserID: userID,
+		Name:   name,
+		Value:  value,
+		Tag:    tag,
+		Date:   time.Now().Format(time.RFC3339),
 	}
 	budget, err := q.CreateTaggedBudget(context.Background(), params)
 	if err != nil {
@@ -159,12 +158,37 @@ func (service *BudgetService) GetTaggedBudgetsStats(userID int64) ([]dtos.GetTag
 			totalPrice = stat.TotalPrice.Float64
 		}
 		budgetsDTO = append(budgetsDTO, dtos.GetTaggedBudgetStatsDTO{
-			ID:             stat.ID,
-			Name:           stat.Name,
-			Value:          stat.Value,
-			IntervalInDays: stat.IntervalInDays,
-			TotalPrice:     totalPrice,
+			ID:         stat.ID,
+			Name:       stat.Name,
+			Value:      stat.Value,
+			Tag:        stat.Tag,
+			TotalPrice: totalPrice,
 		})
 	}
 	return budgetsDTO, nil
+}
+
+func (service *BudgetService) UpdateTaggedBudget(userID int64, id int64, name string, value float64, tag string) (*queries.TaggedBudget, error) {
+	q := queries.New(service.DB)
+	if tag == "" {
+		return nil, errors.New("empty tags are invalid")
+	}
+	params := queries.UpdateTaggedBudgetParams{
+		ID:     id,
+		UserID: userID,
+		Name:   name,
+		Value:  value,
+		Tag:    tag,
+	}
+	err := q.UpdateTaggedBudget(context.Background(), params)
+	if err != nil {
+		return nil, err
+	}
+	return &queries.TaggedBudget{
+		ID:     id,
+		UserID: userID,
+		Name:   name,
+		Value:  value,
+		Tag:    tag,
+	}, nil
 }

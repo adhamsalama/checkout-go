@@ -46,20 +46,19 @@ func (q *Queries) CreateMonthlyBudget(ctx context.Context, arg CreateMonthlyBudg
 
 const createTaggedBudget = `-- name: CreateTaggedBudget :one
 INSERT INTO tagged_budgets (
-  user_id, name, value, interval_in_days, tag, date
+  user_id, name, value, tag, date
 ) VALUES (
-  ?, ?, ?, ?, ?, ?
+  ?, ?, ?, ?, ?
 )
-RETURNING id, user_id, name, value, interval_in_days, tag, date
+RETURNING id, user_id, name, value, tag, date
 `
 
 type CreateTaggedBudgetParams struct {
-	UserID         int64   `json:"userId"`
-	Name           string  `json:"name"`
-	Value          float64 `json:"value"`
-	IntervalInDays int64   `json:"intervalInDays"`
-	Tag            string  `json:"tag"`
-	Date           string  `json:"date"`
+	UserID int64   `json:"userId"`
+	Name   string  `json:"name"`
+	Value  float64 `json:"value"`
+	Tag    string  `json:"tag"`
+	Date   string  `json:"date"`
 }
 
 func (q *Queries) CreateTaggedBudget(ctx context.Context, arg CreateTaggedBudgetParams) (TaggedBudget, error) {
@@ -67,7 +66,6 @@ func (q *Queries) CreateTaggedBudget(ctx context.Context, arg CreateTaggedBudget
 		arg.UserID,
 		arg.Name,
 		arg.Value,
-		arg.IntervalInDays,
 		arg.Tag,
 		arg.Date,
 	)
@@ -77,7 +75,6 @@ func (q *Queries) CreateTaggedBudget(ctx context.Context, arg CreateTaggedBudget
 		&i.UserID,
 		&i.Name,
 		&i.Value,
-		&i.IntervalInDays,
 		&i.Tag,
 		&i.Date,
 	)
@@ -126,7 +123,7 @@ func (q *Queries) GetMonthlyBudget(ctx context.Context, userID int64) (MonthlyBu
 }
 
 const getTaggedBudget = `-- name: GetTaggedBudget :one
-SELECT id, user_id, name, value, interval_in_days, tag, date FROM tagged_budgets
+SELECT id, user_id, name, value, tag, date FROM tagged_budgets
 WHERE user_id = ? AND id = ?
 `
 
@@ -143,7 +140,6 @@ func (q *Queries) GetTaggedBudget(ctx context.Context, arg GetTaggedBudgetParams
 		&i.UserID,
 		&i.Name,
 		&i.Value,
-		&i.IntervalInDays,
 		&i.Tag,
 		&i.Date,
 	)
@@ -155,20 +151,22 @@ SELECT
     b.id, 
     b.name, 
     b.value,
-    b.interval_in_days,
+    b.tag,
     SUM(COALESCE(t.price, 0)) AS total_price
 FROM tagged_budgets b
-LEFT JOIN transactions t 
+LEFT JOIN transactions t
     ON EXISTS (
-        SELECT 1 
-        FROM json_each(t.tags) 
+        SELECT 1
+        FROM json_each(t.tags)
         WHERE json_each.value = b.tag
     )
-    AND t.user_id = ? 
+    AND t.user_id = ?
     AND t.price < 0
-    AND t.date >= DATE('now', '-' || b.interval_in_days || ' days')
+    AND t.date >= DATE('now', '-' || 
+                         (SELECT strftime('%d', date('now', 'start of month', '+1 month', '-1 day')))
+                        || ' days')
 WHERE b.user_id = ?
-GROUP BY b.id, b.name, b.value, b.interval_in_days
+GROUP BY b.id, b.name, b.value
 `
 
 type GetTaggedBudgetStatsParams struct {
@@ -177,11 +175,11 @@ type GetTaggedBudgetStatsParams struct {
 }
 
 type GetTaggedBudgetStatsRow struct {
-	ID             int64           `json:"id"`
-	Name           string          `json:"name"`
-	Value          float64         `json:"value"`
-	IntervalInDays int64           `json:"intervalInDays"`
-	TotalPrice     sql.NullFloat64 `json:"totalPrice"`
+	ID         int64           `json:"id"`
+	Name       string          `json:"name"`
+	Value      float64         `json:"value"`
+	Tag        string          `json:"tag"`
+	TotalPrice sql.NullFloat64 `json:"totalPrice"`
 }
 
 func (q *Queries) GetTaggedBudgetStats(ctx context.Context, arg GetTaggedBudgetStatsParams) ([]GetTaggedBudgetStatsRow, error) {
@@ -197,7 +195,7 @@ func (q *Queries) GetTaggedBudgetStats(ctx context.Context, arg GetTaggedBudgetS
 			&i.ID,
 			&i.Name,
 			&i.Value,
-			&i.IntervalInDays,
+			&i.Tag,
 			&i.TotalPrice,
 		); err != nil {
 			return nil, err
@@ -214,7 +212,7 @@ func (q *Queries) GetTaggedBudgetStats(ctx context.Context, arg GetTaggedBudgetS
 }
 
 const getTaggedBudgets = `-- name: GetTaggedBudgets :many
-SELECT id, user_id, name, value, interval_in_days, tag, date FROM tagged_budgets
+SELECT id, user_id, name, value, tag, date FROM tagged_budgets
 WHERE user_id = ?
 `
 
@@ -232,7 +230,6 @@ func (q *Queries) GetTaggedBudgets(ctx context.Context, userID int64) ([]TaggedB
 			&i.UserID,
 			&i.Name,
 			&i.Value,
-			&i.IntervalInDays,
 			&i.Tag,
 			&i.Date,
 		); err != nil {
@@ -264,5 +261,31 @@ type UpdateMonthlyBudgetParams struct {
 
 func (q *Queries) UpdateMonthlyBudget(ctx context.Context, arg UpdateMonthlyBudgetParams) error {
 	_, err := q.db.ExecContext(ctx, updateMonthlyBudget, arg.Name, arg.Value, arg.UserID)
+	return err
+}
+
+const updateTaggedBudget = `-- name: UpdateTaggedBudget :exec
+UPDATE tagged_budgets
+SET name = ?, value = ?, tag = ?
+WHERE user_id = ? and id = ?
+RETURNING id, user_id, name, value, tag, date
+`
+
+type UpdateTaggedBudgetParams struct {
+	Name   string  `json:"name"`
+	Value  float64 `json:"value"`
+	Tag    string  `json:"tag"`
+	UserID int64   `json:"userId"`
+	ID     int64   `json:"id"`
+}
+
+func (q *Queries) UpdateTaggedBudget(ctx context.Context, arg UpdateTaggedBudgetParams) error {
+	_, err := q.db.ExecContext(ctx, updateTaggedBudget,
+		arg.Name,
+		arg.Value,
+		arg.Tag,
+		arg.UserID,
+		arg.ID,
+	)
 	return err
 }

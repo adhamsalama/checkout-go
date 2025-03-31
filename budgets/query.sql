@@ -27,9 +27,9 @@ DELETE FROM monthly_budgets WHERE user_id = ?;
 
 -- name: CreateTaggedBudget :one
 INSERT INTO tagged_budgets (
-  user_id, name, value, interval_in_days, tag, date
+  user_id, name, value, tag, date
 ) VALUES (
-  ?, ?, ?, ?, ?, ?
+  ?, ?, ?, ?, ?
 )
 RETURNING *;
 
@@ -42,6 +42,14 @@ SELECT * FROM tagged_budgets
 WHERE user_id = ? AND id = ?;
 
 
+
+-- name: UpdateTaggedBudget :exec
+UPDATE tagged_budgets
+SET name = ?, value = ?, tag = ?
+WHERE user_id = ? and id = ?
+RETURNING *;
+
+
 -- name: DeleteTaggedBudget :exec
 DELETE FROM tagged_budgets WHERE user_id = ? AND id = ?;
 
@@ -50,7 +58,7 @@ SELECT
     b.id, 
     b.name, 
     b.value,
-    b.interval_in_days,
+    b.tag,
     SUM(COALESCE(t.price, 0)) AS total_price
 FROM tagged_budgets b
 LEFT JOIN transactions t
@@ -61,6 +69,8 @@ LEFT JOIN transactions t
     )
     AND t.user_id = ?
     AND t.price < 0
-    AND t.date >= DATE('now', '-' || b.interval_in_days || ' days')
+    AND t.date >= DATE('now', '-' || 
+                         (SELECT strftime('%d', date('now', 'start of month', '+1 month', '-1 day')))
+                        || ' days')
 WHERE b.user_id = ?
-GROUP BY b.id, b.name, b.value, b.interval_in_days;
+GROUP BY b.id, b.name, b.value;
