@@ -10,6 +10,66 @@ import (
 	"database/sql"
 )
 
+const getIncomeSpentPercentage = `-- name: GetIncomeSpentPercentage :many
+
+
+WITH stats AS (
+SELECT 
+    CAST(strftime('%Y-%m', date) AS TEXT) AS month,         
+    CAST(COALESCE(SUM(CASE WHEN price > 0 THEN price END), 0) AS REAL) AS total_income,  
+    CAST(ABS(COALESCE(SUM(CASE WHEN price <= 0 THEN price END), 0)) AS REAL) AS total_spent,
+    CAST(
+        CASE 
+            WHEN COALESCE(SUM(CASE WHEN price > 0 THEN price END), 0) = 0 
+            THEN 0
+            ELSE ROUND((ABS(SUM(CASE WHEN price <= 0 THEN price END)) * 100.0) 
+                / SUM(CASE WHEN price > 0 THEN price END), 2)
+        END 
+    AS REAL) AS spent_percentage
+FROM transactions
+WHERE user_id = ?
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+)
+SELECT month, total_income, total_spent, spent_percentage FROM stats ORDER BY month ASC
+`
+
+type GetIncomeSpentPercentageRow struct {
+	Month           string  `json:"month"`
+	TotalIncome     float64 `json:"total_income"`
+	TotalSpent      float64 `json:"total_spent"`
+	SpentPercentage float64 `json:"spent_percentage"`
+}
+
+func (q *Queries) GetIncomeSpentPercentage(ctx context.Context, userID int64) ([]GetIncomeSpentPercentageRow, error) {
+	rows, err := q.db.QueryContext(ctx, getIncomeSpentPercentage, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetIncomeSpentPercentageRow
+	for rows.Next() {
+		var i GetIncomeSpentPercentageRow
+		if err := rows.Scan(
+			&i.Month,
+			&i.TotalIncome,
+			&i.TotalSpent,
+			&i.SpentPercentage,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSumOfExpensesOfAMonth = `-- name: GetSumOfExpensesOfAMonth :one
 SELECT SUM(price)
 FROM transactions

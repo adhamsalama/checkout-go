@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"checkout-go/customtypes"
+	dtos "checkout-go/transactions/dtos"
 	queries "checkout-go/transactions/generated"
 
 	goqu "github.com/doug-martin/goqu/v9"
@@ -403,6 +404,29 @@ func (service *TransactionService) GetSumOfExpensesForCurrentMonth(userID int64)
 		return 0, err
 	}
 	return sum.Float64, nil
+}
+
+func (service *TransactionService) GetIncomeSpentPercentage(userID int64) ([]dtos.IncomeSpentDTO, error) {
+	q := queries.New(service.DB)
+	data, err := q.GetIncomeSpentPercentage(context.Background(), userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []dtos.IncomeSpentDTO{}, nil
+		}
+		return nil, err
+	}
+
+	resultDTO := []dtos.IncomeSpentDTO{}
+	for _, entry := range data {
+		spentPercentage := entry.SpentPercentage
+		resultDTO = append(resultDTO, dtos.IncomeSpentDTO{
+			Month:           entry.Month,
+			TotalIncome:     entry.TotalIncome,
+			TotalSpent:      entry.TotalSpent,
+			SpentPercentage: spentPercentage,
+		})
+	}
+	return resultDTO, nil
 }
 
 // Returns the number of days in a month for a given year.

@@ -400,3 +400,17 @@ func (c *TransactionController) GetExpensesSumForCurrentMonth(w http.ResponseWri
 		return
 	}
 }
+
+func (c *TransactionController) GetIncomeSpentPercentage(w http.ResponseWriter, req *http.Request) {
+	var userID int64 = 1
+
+	data, err := c.TransactionsService.GetIncomeSpentPercentage(userID)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		http.Error(w, "Failed to fetch income spent percentage", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(data)
+}
