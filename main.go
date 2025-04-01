@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	// r.Use(middleware.RealIP)
 	// r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(CORS)
 	r.Post("/expenses", transactionController.CreateExpense)
 	r.Put("/expenses/{id}", transactionController.UpdateExpense)
 	r.Delete("/expenses/{id}", transactionController.DeleteExpense)
@@ -148,4 +149,19 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Get("/budgets/tagged/stats", budgetsController.GetTaggedBudgetStats)
 	// Start the server
 	http.ListenAndServe(":8080", r)
+}
+
+func CORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
