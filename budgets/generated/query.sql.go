@@ -162,9 +162,8 @@ LEFT JOIN transactions t
     )
     AND t.user_id = ?
     AND t.price < 0
-    AND t.date >= DATE('now', '-' || 
-                         (SELECT strftime('%d', date('now', 'start of month', '+1 month', '-1 day')))
-                        || ' days')
+    AND strftime('%Y-%m', t.date) >= strftime('%Y-%m', date('now'))
+    AND strftime('%Y-%m', t.date) < strftime('%Y-%m', date('now', 'start of month', '+1 month'))
 WHERE b.user_id = ?
 GROUP BY b.id, b.name, b.value
 `
