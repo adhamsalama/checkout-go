@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Get("/expenses/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
 	r.Get("/expenses/current-month-sum", transactionController.GetExpensesSumForCurrentMonth)
 	r.Get("/transactions/income-spent-percentage", transactionController.GetIncomeSpentPercentage)
+	r.Get("/transactions/cumulative-balance", transactionController.GetCumulativeBalancePerMonth)
 	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
 	r.Get("/expenses/statistics", transactionController.GetTagsStatistics)
 	r.Get("/expenses", transactionController.ListExpenses)

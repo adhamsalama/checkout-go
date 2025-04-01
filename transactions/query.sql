@@ -25,3 +25,19 @@ LIMIT 12
 )
 SELECT * FROM stats ORDER BY month ASC;
 
+
+-- name: GetCumulativeBalancePerMonth :many
+WITH monthly_expenses AS (
+    SELECT 
+        CAST(strftime('%Y-%m', date) AS TEXT) AS year_month,  -- Format date as Year-Month
+        SUM(price) AS monthly_balance
+    FROM transactions
+    WHERE user_id = ?
+    GROUP BY year_month
+)
+SELECT 
+    year_month,
+    CAST(COALESCE(SUM(monthly_balance) OVER (ORDER BY year_month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), 0) AS REAL) AS cumulative_balance
+FROM monthly_expenses
+ORDER BY year_month;
+

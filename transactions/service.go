@@ -429,6 +429,29 @@ func (service *TransactionService) GetIncomeSpentPercentage(userID int64) ([]dto
 	return resultDTO, nil
 }
 
+func (service *TransactionService) GetCumulativeBalancePerMonth(userID int64) ([]dtos.CumulativeBalanceDTO, error) {
+	q := queries.New(service.DB)
+
+	// Get cumulative balance per month
+	data, err := q.GetCumulativeBalancePerMonth(context.Background(), userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []dtos.CumulativeBalanceDTO{}, nil
+		}
+		return nil, err
+	}
+
+	// Prepare DTO to return
+	resultDTO := []dtos.CumulativeBalanceDTO{}
+	for _, entry := range data {
+		resultDTO = append(resultDTO, dtos.CumulativeBalanceDTO{
+			YearMonth:         entry.YearMonth,
+			CumulativeBalance: entry.CumulativeBalance,
+		})
+	}
+	return resultDTO, nil
+}
+
 // Returns the number of days in a month for a given year.
 func daysInMonth(m int, year int) int {
 	return time.Date(year, time.Month(m+1), 0, 0, 0, 0, 0, time.UTC).Day()

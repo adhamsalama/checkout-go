@@ -414,3 +414,21 @@ func (c *TransactionController) GetIncomeSpentPercentage(w http.ResponseWriter, 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(data)
 }
+
+func (c *TransactionController) GetCumulativeBalancePerMonth(w http.ResponseWriter, req *http.Request) {
+	var userID int64 = 1
+
+	balance, err := c.TransactionsService.GetCumulativeBalancePerMonth(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(balance)
+	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+		return
+	}
+}

@@ -10,9 +10,51 @@ import (
 	"database/sql"
 )
 
+const getCumulativeBalancePerMonth = `-- name: GetCumulativeBalancePerMonth :many
+WITH monthly_expenses AS (
+    SELECT 
+        CAST(strftime('%Y-%m', date) AS TEXT) AS year_month,  -- Format date as Year-Month
+        SUM(price) AS monthly_balance
+    FROM transactions
+    WHERE user_id = ?
+    GROUP BY year_month
+)
+SELECT 
+    year_month,
+    CAST(COALESCE(SUM(monthly_balance) OVER (ORDER BY year_month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), 0) AS REAL) AS cumulative_balance
+FROM monthly_expenses
+ORDER BY year_month
+`
+
+type GetCumulativeBalancePerMonthRow struct {
+	YearMonth         string  `json:"year_month"`
+	CumulativeBalance float64 `json:"cumulative_balance"`
+}
+
+func (q *Queries) GetCumulativeBalancePerMonth(ctx context.Context, userID int64) ([]GetCumulativeBalancePerMonthRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCumulativeBalancePerMonth, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCumulativeBalancePerMonthRow
+	for rows.Next() {
+		var i GetCumulativeBalancePerMonthRow
+		if err := rows.Scan(&i.YearMonth, &i.CumulativeBalance); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getIncomeSpentPercentage = `-- name: GetIncomeSpentPercentage :many
-
-
 WITH stats AS (
 SELECT 
     CAST(strftime('%Y-%m', date) AS TEXT) AS month,         
