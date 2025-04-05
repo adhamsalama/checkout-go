@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"checkout-go/auth"
 	dto "checkout-go/budgets/dtos"
 
 	"github.com/go-chi/chi/v5"
@@ -46,7 +47,12 @@ func (c *BudgetsController) CreateMonthlyBudget(w http.ResponseWriter, req *http
 }
 
 func (c *BudgetsController) GetMonthlyBudget(w http.ResponseWriter, req *http.Request) {
-	monthlyBudget, err := c.BudgetService.GetMonthylBudget(1)
+	val := req.Context().Value(auth.UserIDKey)
+	userID, ok := val.(int64)
+	if !ok {
+		panic("UserID is not an int64")
+	}
+	monthlyBudget, err := c.BudgetService.GetMonthylBudget(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -133,7 +139,12 @@ func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.
 }
 
 func (c *BudgetsController) GetTaggedBudgets(w http.ResponseWriter, req *http.Request) {
-	budgets, err := c.BudgetService.GetTaggedBudgets(1)
+	val := req.Context().Value(auth.UserIDKey)
+	userID, ok := val.(int64)
+	if !ok {
+		panic("UserID is not an int64")
+	}
+	budgets, err := c.BudgetService.GetTaggedBudgets(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -169,7 +180,12 @@ func (c *BudgetsController) DeleteTaggedBudget(w http.ResponseWriter, req *http.
 }
 
 func (c *BudgetsController) GetTaggedBudgetStats(w http.ResponseWriter, req *http.Request) {
-	budgetStats, err := c.BudgetService.GetTaggedBudgetsStats(1)
+	val := req.Context().Value(auth.UserIDKey)
+	userID, ok := val.(int64)
+	if !ok {
+		panic("UserID is not an int64")
+	}
+	budgetStats, err := c.BudgetService.GetTaggedBudgetsStats(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
