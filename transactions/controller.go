@@ -10,6 +10,8 @@ import (
 
 	"checkout-go/customtypes"
 
+	"checkout-go/auth"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -144,6 +146,11 @@ func (c *TransactionController) GetTagsStatistics(w http.ResponseWriter, req *ht
 }
 
 func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Request) {
+	val := req.Context().Value(auth.UserIDKey)
+	userID, ok := val.(int64)
+	if !ok {
+		panic("UserID is not an int64")
+	}
 	limitStr := req.URL.Query().Get("limit")
 	offsetStr := req.URL.Query().Get("offset")
 	startDateStr := req.URL.Query().Get("startDate")
@@ -191,7 +198,7 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 	}
 	zero := 0.0
 	filters.PriceLte = &zero
-	list, err := c.TransactionsService.List(1, filters)
+	list, err := c.TransactionsService.List(userID, filters)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

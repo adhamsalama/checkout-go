@@ -130,7 +130,7 @@ type TransactionList struct {
 	Offset   *int       `json:"offset"`
 }
 
-func (service *TransactionService) List(userID int, filters TransactionList) (*[]Transaction, error) {
+func (service *TransactionService) List(userID int64, filters TransactionList) (*[]Transaction, error) {
 	selectStatement := service.DB.From("transactions").Select("*").Where(goqu.Ex{
 		"user_id": userID,
 	})

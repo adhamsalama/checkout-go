@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 
 	// migration "checkout-go/migrations"
+	"checkout-go/auth"
 	"checkout-go/budgets"
 	"checkout-go/transactions"
+	"checkout-go/users"
 
 	goqu "github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
@@ -60,6 +62,17 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 	budgetsController := budgets.BudgetsController{
 		BudgetService: budgetsService,
+	}
+	usersService := users.UsersService{
+		DB: goquDB,
+	}
+	hmacSecret := []byte{}
+	authService := auth.AuthService{
+		UserService: &usersService,
+		HmacSecret:  hmacSecret,
+	}
+	authController := auth.AuthController{
+		AuthService: &authService,
 	}
 
 	go func() {
@@ -133,7 +146,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Get("/transactions/cumulative-balance", transactionController.GetCumulativeBalancePerMonth)
 	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
 	r.Get("/expenses/statistics", transactionController.GetTagsStatistics)
-	r.Get("/expenses", transactionController.ListExpenses)
+	r.With(authController.RequireLoginMiddleware).Get("/expenses", transactionController.ListExpenses)
 	r.Get("/balance", transactionController.GetBalance)
 	r.Post("/payments", transactionController.CreatePayment)
 	r.Get("/payments", transactionController.ListPayments)
@@ -147,6 +160,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 	r.Put("/budgets/tagged/{id}", budgetsController.UpdateTaggedBudget)
 	r.Delete("/budgets/tagged/{id}", budgetsController.DeleteTaggedBudget)
 	r.Get("/budgets/tagged/stats", budgetsController.GetTaggedBudgetStats)
+	r.Post("/auth/signup", authController.Signup)
+	r.Post("/auth/login", authController.Login)
 	// Start the server
 	http.ListenAndServe(":8080", r)
 }
