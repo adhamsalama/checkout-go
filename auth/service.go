@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"net/http"
 
 	"checkout-go/users"
 )
@@ -27,4 +28,13 @@ func (service *AuthService) signup(username, password string) (*SignupOutputDTO,
 	}
 	token := GenerateJWT(service.HmacSecret, user.ID, user.Username)
 	return &SignupOutputDTO{Token: token}, nil
+}
+
+func (service *AuthService) GetUserIDFromRequest(req *http.Request) int64 {
+	val := req.Context().Value(UserIDKey)
+	userID, ok := val.(int64)
+	if !ok {
+		panic("UserID is not an int64")
+	}
+	return userID
 }

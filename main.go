@@ -52,6 +52,15 @@ CREATE TABLE IF NOT EXISTS transactions (
 	}
 
 	// migration.MigrateExpensesFromMongoToSql(&transactionsService)
+	usersService := users.UsersService{
+		DB: goquDB,
+	}
+
+	hmacSecret := []byte{}
+	authService := auth.AuthService{
+		UserService: &usersService,
+		HmacSecret:  hmacSecret,
+	}
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
 	}
@@ -62,15 +71,9 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 	budgetsController := budgets.BudgetsController{
 		BudgetService: budgetsService,
+		AuthService:   authService,
 	}
-	usersService := users.UsersService{
-		DB: goquDB,
-	}
-	hmacSecret := []byte{}
-	authService := auth.AuthService{
-		UserService: &usersService,
-		HmacSecret:  hmacSecret,
-	}
+
 	authController := auth.AuthController{
 		AuthService: &authService,
 	}

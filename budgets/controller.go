@@ -15,6 +15,7 @@ import (
 
 type BudgetsController struct {
 	BudgetService BudgetService
+	AuthService   auth.AuthService
 }
 
 func (c *BudgetsController) CreateMonthlyBudget(w http.ResponseWriter, req *http.Request) {
@@ -31,7 +32,8 @@ func (c *BudgetsController) CreateMonthlyBudget(w http.ResponseWriter, req *http
 		return
 	}
 
-	monthlyBudget, err := c.BudgetService.CreateMonthylBudget(1, budget.Name, budget.Value)
+	userID := c.AuthService.GetUserIDFromRequest(req)
+	monthlyBudget, err := c.BudgetService.CreateMonthylBudget(userID, budget.Name, budget.Value)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -47,11 +49,7 @@ func (c *BudgetsController) CreateMonthlyBudget(w http.ResponseWriter, req *http
 }
 
 func (c *BudgetsController) GetMonthlyBudget(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(auth.UserIDKey)
-	userID, ok := val.(int64)
-	if !ok {
-		panic("UserID is not an int64")
-	}
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	monthlyBudget, err := c.BudgetService.GetMonthylBudget(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -80,7 +78,8 @@ func (c *BudgetsController) UpdateMonthlyBudget(w http.ResponseWriter, req *http
 		return
 	}
 
-	monthlyBudget, err := c.BudgetService.UpdateMonthylBudget(1, budget.Name, budget.Value)
+	userID := c.AuthService.GetUserIDFromRequest(req)
+	monthlyBudget, err := c.BudgetService.UpdateMonthylBudget(userID, budget.Name, budget.Value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -95,7 +94,8 @@ func (c *BudgetsController) UpdateMonthlyBudget(w http.ResponseWriter, req *http
 }
 
 func (c *BudgetsController) DeleteMonthlyBudget(w http.ResponseWriter, req *http.Request) {
-	monthlyBudget, err := c.BudgetService.DeleteMonthlyBudget(1)
+	userID := c.AuthService.GetUserIDFromRequest(req)
+	monthlyBudget, err := c.BudgetService.DeleteMonthlyBudget(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -123,7 +123,8 @@ func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.
 		return
 	}
 
-	monthlyBudget, err := c.BudgetService.CreateTaggedBudget(1, budget.Name, budget.Value, budget.Tag)
+	userID := c.AuthService.GetUserIDFromRequest(req)
+	monthlyBudget, err := c.BudgetService.CreateTaggedBudget(userID, budget.Name, budget.Value, budget.Tag)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -139,11 +140,7 @@ func (c *BudgetsController) CreateTaggedBudget(w http.ResponseWriter, req *http.
 }
 
 func (c *BudgetsController) GetTaggedBudgets(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(auth.UserIDKey)
-	userID, ok := val.(int64)
-	if !ok {
-		panic("UserID is not an int64")
-	}
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	budgets, err := c.BudgetService.GetTaggedBudgets(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -164,7 +161,7 @@ func (c *BudgetsController) DeleteTaggedBudget(w http.ResponseWriter, req *http.
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
-	var userID int64 = 1
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	transaction, err := c.BudgetService.DeleteTaggedBudget(userID, int64(id))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -180,11 +177,7 @@ func (c *BudgetsController) DeleteTaggedBudget(w http.ResponseWriter, req *http.
 }
 
 func (c *BudgetsController) GetTaggedBudgetStats(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(auth.UserIDKey)
-	userID, ok := val.(int64)
-	if !ok {
-		panic("UserID is not an int64")
-	}
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	budgetStats, err := c.BudgetService.GetTaggedBudgetsStats(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -217,7 +210,7 @@ func (c *BudgetsController) UpdateTaggedBudget(w http.ResponseWriter, req *http.
 		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
 		return
 	}
-	var userID int64 = 1
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	updatedBudget, err := c.BudgetService.UpdateTaggedBudget(userID, int64(id), budget.Name, budget.Value, budget.Tag)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
