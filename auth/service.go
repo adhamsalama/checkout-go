@@ -7,6 +7,10 @@ import (
 	"checkout-go/users"
 )
 
+type UserContextReader interface {
+	GetUserIDFromRequest(req *http.Request) int64
+}
+
 type AuthService struct {
 	UserService *users.UsersService
 	HmacSecret  []byte
@@ -38,3 +42,5 @@ func (service *AuthService) GetUserIDFromRequest(req *http.Request) int64 {
 	}
 	return userID
 }
+
+var _ UserContextReader = (*AuthService)(nil) // compile-time check

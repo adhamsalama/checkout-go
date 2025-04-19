@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	}
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
+		AuthService:         &authService,
 	}
 
 	budgetsService := budgets.BudgetService{
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 	budgetsController := budgets.BudgetsController{
 		BudgetService: budgetsService,
-		AuthService:   authService,
+		AuthService:   &authService,
 	}
 
 	authController := auth.AuthController{

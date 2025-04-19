@@ -15,7 +15,7 @@ import (
 
 type BudgetsController struct {
 	BudgetService BudgetService
-	AuthService   auth.AuthService
+	AuthService   auth.UserContextReader
 }
 
 func (c *BudgetsController) CreateMonthlyBudget(w http.ResponseWriter, req *http.Request) {
