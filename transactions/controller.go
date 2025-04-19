@@ -17,6 +17,7 @@ import (
 
 type TransactionController struct {
 	TransactionsService TransactionService
+	AuthService         auth.UserContextReader
 }
 
 func (c *TransactionController) CreateExpense(w http.ResponseWriter, req *http.Request) {
@@ -41,7 +42,8 @@ func (c *TransactionController) CreateExpense(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	transaction, err := c.TransactionsService.CreateExpense(1, expense.Name, expense.Price, expense.Seller, expense.Note, time.Time(expense.Date), expense.Tags)
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
+	transaction, err := c.TransactionsService.CreateExpense(userID, expense.Name, expense.Price, expense.Seller, expense.Note, time.Time(expense.Date), expense.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -68,7 +70,8 @@ func (c *TransactionController) GetExpensesDailyStatisticsForMonthInYear(w http.
 		http.Error(w, "Invalid Year", http.StatusBadRequest)
 		return
 	}
-	aggregation, err := c.TransactionsService.GetExpensesDailyStatisticsForMonthInYear(1, month, year)
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
+	aggregation, err := c.TransactionsService.GetExpensesDailyStatisticsForMonthInYear(userID, month, year)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -87,7 +90,8 @@ func (c *TransactionController) GetExpensesMonthlyStatisticsForAYear(w http.Resp
 		http.Error(w, "Invalid Year", http.StatusBadRequest)
 		return
 	}
-	aggregation, err := c.TransactionsService.GetExpensesMonthlyStatisticsForYear(1, year)
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
+	aggregation, err := c.TransactionsService.GetExpensesMonthlyStatisticsForYear(userID, year)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -109,7 +113,8 @@ func (c *TransactionController) GetTransactionByID(w http.ResponseWriter, req *h
 	filters := TransactionList{
 		IDs: &[]int{id},
 	}
-	aggregation, err := c.TransactionsService.List(1, filters)
+	userID := c.AuthService.GetUserIDFromRequest(req)
+	aggregation, err := c.TransactionsService.List(userID, filters)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -127,7 +132,7 @@ func (c *TransactionController) GetTransactionByID(w http.ResponseWriter, req *h
 }
 
 func (c *TransactionController) GetTagsStatistics(w http.ResponseWriter, req *http.Request) {
-	userID := 1
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
 	aggregation, err := c.TransactionsService.GetTagsStatistics(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -146,11 +151,6 @@ func (c *TransactionController) GetTagsStatistics(w http.ResponseWriter, req *ht
 }
 
 func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Request) {
-	val := req.Context().Value(auth.UserIDKey)
-	userID, ok := val.(int64)
-	if !ok {
-		panic("UserID is not an int64")
-	}
 	limitStr := req.URL.Query().Get("limit")
 	offsetStr := req.URL.Query().Get("offset")
 	startDateStr := req.URL.Query().Get("startDate")
@@ -198,6 +198,7 @@ func (c *TransactionController) ListExpenses(w http.ResponseWriter, req *http.Re
 	}
 	zero := 0.0
 	filters.PriceLte = &zero
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	list, err := c.TransactionsService.List(userID, filters)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -235,7 +236,8 @@ func (c *TransactionController) ListPayments(w http.ResponseWriter, req *http.Re
 	// To Lazy to add PriceGt
 	almostZero := 0.0000001
 	filters.PriceGte = &almostZero
-	list, err := c.TransactionsService.List(1, filters)
+	userID := c.AuthService.GetUserIDFromRequest(req)
+	list, err := c.TransactionsService.List(userID, filters)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -249,7 +251,8 @@ func (c *TransactionController) ListPayments(w http.ResponseWriter, req *http.Re
 }
 
 func (c *TransactionController) GetBalance(w http.ResponseWriter, req *http.Request) {
-	balance, err := c.TransactionsService.GetBalance(1)
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
+	balance, err := c.TransactionsService.GetBalance(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -283,7 +286,8 @@ func (c *TransactionController) CreatePayment(w http.ResponseWriter, req *http.R
 		http.Error(w, fmt.Sprintf("Invalid body: %v", err), http.StatusBadRequest)
 		return
 	}
-	transaction, err := c.TransactionsService.CreatePayment(1, payment.Name, payment.Price, payment.Seller, payment.Note, time.Time(payment.Date), payment.Tags)
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
+	transaction, err := c.TransactionsService.CreatePayment(userID, payment.Name, payment.Price, payment.Seller, payment.Note, time.Time(payment.Date), payment.Tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -319,7 +323,8 @@ func (c *TransactionController) UpdateExpense(w http.ResponseWriter, req *http.R
 		http.Error(w, fmt.Sprintf("Expense price cannot be higher than 0: %v", *expense.Price), http.StatusBadRequest)
 		return
 	}
-	userID := 1
+
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
 	transaction, err := c.TransactionsService.Update(userID, id, expense)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -356,7 +361,8 @@ func (c *TransactionController) UpdatePayment(w http.ResponseWriter, req *http.R
 		http.Error(w, fmt.Sprintf("Payment price cannot be lower than or equal to 0: %v", *payment.Price), http.StatusBadRequest)
 		return
 	}
-	userID := 1
+
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
 	transaction, err := c.TransactionsService.Update(userID, id, payment)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -377,7 +383,7 @@ func (c *TransactionController) DeleteExpense(w http.ResponseWriter, req *http.R
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
-	userID := 1
+	userID := int(c.AuthService.GetUserIDFromRequest(req))
 	transaction, err := c.TransactionsService.DeleteTransaction(userID, id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -393,7 +399,7 @@ func (c *TransactionController) DeleteExpense(w http.ResponseWriter, req *http.R
 }
 
 func (c *TransactionController) GetExpensesSumForCurrentMonth(w http.ResponseWriter, req *http.Request) {
-	var userID int64 = 1
+	userID := c.AuthService.GetUserIDFromRequest(req)
 	transaction, err := c.TransactionsService.GetSumOfExpensesForCurrentMonth(userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -409,7 +415,7 @@ func (c *TransactionController) GetExpensesSumForCurrentMonth(w http.ResponseWri
 }
 
 func (c *TransactionController) GetIncomeSpentPercentage(w http.ResponseWriter, req *http.Request) {
-	var userID int64 = 1
+	userID := c.AuthService.GetUserIDFromRequest(req)
 
 	data, err := c.TransactionsService.GetIncomeSpentPercentage(userID)
 	if err != nil {
@@ -423,7 +429,7 @@ func (c *TransactionController) GetIncomeSpentPercentage(w http.ResponseWriter, 
 }
 
 func (c *TransactionController) GetCumulativeBalancePerMonth(w http.ResponseWriter, req *http.Request) {
-	var userID int64 = 1
+	userID := c.AuthService.GetUserIDFromRequest(req)
 
 	balance, err := c.TransactionsService.GetCumulativeBalancePerMonth(userID)
 	if err != nil {

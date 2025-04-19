@@ -52,8 +52,18 @@ CREATE TABLE IF NOT EXISTS transactions (
 	}
 
 	// migration.MigrateExpensesFromMongoToSql(&transactionsService)
+	usersService := users.UsersService{
+		DB: goquDB,
+	}
+
+	hmacSecret := []byte{}
+	authService := auth.AuthService{
+		UserService: &usersService,
+		HmacSecret:  hmacSecret,
+	}
 	transactionController := transactions.TransactionController{
 		TransactionsService: transactionsService,
+		AuthService:         &authService,
 	}
 
 	budgetsService := budgets.BudgetService{
@@ -62,15 +72,9 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 	budgetsController := budgets.BudgetsController{
 		BudgetService: budgetsService,
+		AuthService:   &authService,
 	}
-	usersService := users.UsersService{
-		DB: goquDB,
-	}
-	hmacSecret := []byte{}
-	authService := auth.AuthService{
-		UserService: &usersService,
-		HmacSecret:  hmacSecret,
-	}
+
 	authController := auth.AuthController{
 		AuthService: &authService,
 	}
@@ -136,29 +140,29 @@ CREATE TABLE IF NOT EXISTS transactions (
 	// r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(CORS)
-	r.Post("/expenses", transactionController.CreateExpense)
-	r.Put("/expenses/{id}", transactionController.UpdateExpense)
-	r.Delete("/expenses/{id}", transactionController.DeleteExpense)
-	r.Get("/expenses/statistics/yearly/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
-	r.Get("/expenses/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
-	r.Get("/expenses/current-month-sum", transactionController.GetExpensesSumForCurrentMonth)
-	r.Get("/transactions/income-spent-percentage", transactionController.GetIncomeSpentPercentage)
-	r.Get("/transactions/cumulative-balance", transactionController.GetCumulativeBalancePerMonth)
-	r.Get("/transactions/{id}", transactionController.GetTransactionByID)
-	r.Get("/expenses/statistics", transactionController.GetTagsStatistics)
-	r.With(authController.RequireLoginMiddleware).Get("/expenses", transactionController.ListExpenses)
-	r.Get("/balance", transactionController.GetBalance)
-	r.Post("/payments", transactionController.CreatePayment)
-	r.Get("/payments", transactionController.ListPayments)
-	r.Put("/payments/{id}", transactionController.UpdatePayment)
-	r.Post("/budgets/monthly", budgetsController.CreateMonthlyBudget)
-	r.With(authController.RequireLoginMiddleware).Get("/budgets/monthly", budgetsController.GetMonthlyBudget)
-	r.Put("/budgets/monthly", budgetsController.UpdateMonthlyBudget)
-	r.Delete("/budgets/monthly", budgetsController.DeleteMonthlyBudget)
+	r.With(authController.RequireLoginMiddleware).Post("/expenses", transactionController.CreateExpense)
+	r.With(authController.RequireLoginMiddleware).Put("/expenses/{id}", transactionController.UpdateExpense)
+	r.With(authController.RequireLoginMiddleware).Delete("/expenses/{id}", transactionController.DeleteExpense)
+	r.With(authController.RequireLoginMiddleware).Get("/expenses/statistics/yearly/{year}", transactionController.GetExpensesMonthlyStatisticsForAYear)
+	r.With(authController.RequireLoginMiddleware).Get("/expenses/statistics/{year}/{month}", transactionController.GetExpensesDailyStatisticsForMonthInYear)
+	r.With(authController.RequireLoginMiddleware).Get("/expenses/current-month-sum", transactionController.GetExpensesSumForCurrentMonth)
+	r.With(authController.RequireLoginMiddleware).Get("/transactions/income-spent-percentage", transactionController.GetIncomeSpentPercentage)
+	r.With(authController.RequireLoginMiddleware).Get("/transactions/cumulative-balance", transactionController.GetCumulativeBalancePerMonth)
+	r.With(authController.RequireLoginMiddleware).Get("/transactions/{id}", transactionController.GetTransactionByID)
+	r.With(authController.RequireLoginMiddleware).Get("/expenses/statistics", transactionController.GetTagsStatistics)
+	r.With(authController.RequireLoginMiddleware).With(authController.RequireLoginMiddleware).Get("/expenses", transactionController.ListExpenses)
+	r.With(authController.RequireLoginMiddleware).Get("/balance", transactionController.GetBalance)
+	r.With(authController.RequireLoginMiddleware).Post("/payments", transactionController.CreatePayment)
+	r.With(authController.RequireLoginMiddleware).Get("/payments", transactionController.ListPayments)
+	r.With(authController.RequireLoginMiddleware).Put("/payments/{id}", transactionController.UpdatePayment)
+	r.With(authController.RequireLoginMiddleware).Post("/budgets/monthly", budgetsController.CreateMonthlyBudget)
+	r.With(authController.RequireLoginMiddleware).With(authController.RequireLoginMiddleware).Get("/budgets/monthly", budgetsController.GetMonthlyBudget)
+	r.With(authController.RequireLoginMiddleware).Put("/budgets/monthly", budgetsController.UpdateMonthlyBudget)
+	r.With(authController.RequireLoginMiddleware).Delete("/budgets/monthly", budgetsController.DeleteMonthlyBudget)
 	r.With(authController.RequireLoginMiddleware).Get("/budgets/tagged", budgetsController.GetTaggedBudgets)
-	r.Post("/budgets/tagged", budgetsController.CreateTaggedBudget)
-	r.Put("/budgets/tagged/{id}", budgetsController.UpdateTaggedBudget)
-	r.Delete("/budgets/tagged/{id}", budgetsController.DeleteTaggedBudget)
+	r.With(authController.RequireLoginMiddleware).Post("/budgets/tagged", budgetsController.CreateTaggedBudget)
+	r.With(authController.RequireLoginMiddleware).Put("/budgets/tagged/{id}", budgetsController.UpdateTaggedBudget)
+	r.With(authController.RequireLoginMiddleware).Delete("/budgets/tagged/{id}", budgetsController.DeleteTaggedBudget)
 	r.With(authController.RequireLoginMiddleware).Get("/budgets/tagged/stats", budgetsController.GetTaggedBudgetStats)
 	r.Post("/auth/signup", authController.Signup)
 	r.Post("/auth/login", authController.Login)
