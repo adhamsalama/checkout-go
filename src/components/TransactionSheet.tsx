@@ -13,7 +13,7 @@ import { parseAmount } from "../format";
 import { Expense } from "../types";
 import { useDialogs } from "./ui/dialogs";
 import { Sheet, useLastValue } from "./ui/Sheet";
-import { TagPicker } from "./ui/TagPicker";
+import { TagPicker, TagPickerHandle } from "./ui/TagPicker";
 
 export type SheetState = { kind: "expense" | "payment"; transaction?: Expense } | null;
 
@@ -27,6 +27,7 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const amountInput = useRef<HTMLIonInputElement>(null);
+  const tagPicker = useRef<TagPickerHandle>(null);
   const dialogs = useDialogs();
 
   const shown = useLastValue(state);
@@ -54,7 +55,7 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
       name: name.trim(),
       sellerName: seller.trim(),
       comment: note.trim(),
-      tags,
+      tags: isExpense ? (tagPicker.current?.pendingValue() ?? tags) : tags,
       date: keepDate ? editing.date : date || undefined,
     };
     setSaving(true);
@@ -126,7 +127,7 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
             <>
               <div>
                 <div className="field-label">Tags</div>
-                <TagPicker value={tags} onChange={setTags} />
+                <TagPicker ref={tagPicker} value={tags} onChange={setTags} />
               </div>
               <IonInput
                 fill="outline"
