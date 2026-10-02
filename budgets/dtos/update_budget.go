@@ -1,3 +1,0 @@
-package budgets
-
-type UpdateMonthlyBudgetDTO CreateMonthlyBudgetDTO

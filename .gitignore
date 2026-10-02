@@ -1,4 +1,18 @@
-*.csv
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+
+# Legacy Go backend databases and data exports
 *.db
 *.sqlite3
-frontend/*
+*.csv
+
+# Copied from node_modules on install
+public/assets/sql-wasm.wasm
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
