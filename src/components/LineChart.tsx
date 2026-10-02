@@ -16,7 +16,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 export type LineDataset = {
   label: string;
-  data: number[];
+  /** null leaves a gap, e.g. before a projection starts. */
+  data: (number | null)[];
   /** A recessive grey line, for comparison or reference series. */
   muted?: boolean;
   dashed?: boolean;

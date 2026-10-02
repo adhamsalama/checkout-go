@@ -4,6 +4,7 @@ import { getStatsSummary, StatsFilter } from "../api/stats";
 import { toDateInput } from "../dates";
 import { FilterBar } from "./stats/FilterBar";
 import { TopNames, WeekdaySpending } from "./stats/Habits";
+import { BalanceForecast } from "./stats/BalanceForecast";
 import { RangeBar } from "./stats/RangeBar";
 import { comparisonRange, elapsed, initialRange, Preset, RangeState, resolveRange, stepRange } from "./stats/range";
 import { RunningTotal } from "./stats/RunningTotal";
@@ -105,6 +106,7 @@ function Dashboard() {
         </>
       )}
       <YearOverYear filter={{ query: debouncedQuery, tags }} version={version} onOpen={setSheet} />
+      <BalanceForecast today={today} version={version} />
       <TransactionSheet state={sheet} onClose={closeSheet} />
     </Page>
   );

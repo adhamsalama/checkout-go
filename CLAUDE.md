@@ -36,7 +36,8 @@ remote uses the SSH host alias `github-personal`.
   `src/test/nodeDb.ts` (`createRawNodeDb()` for an unmigrated one).
 - `src/api/`: the former Go services, ported to plain async functions with hand-written SQL.
   `transactions.ts`, `accounts.ts` and `budgets.ts` hold the domain logic. `stats.ts` backs the Stats screen: every query
-  takes a `StatsFilter` (inclusive day range, text search, required tags) and returns positive amounts spent. `backup.ts` handles JSON export/validate/restore,
+  takes a `StatsFilter` (inclusive day range, text search, required tags) and returns positive amounts spent. `forecast.ts` backs the Stats "Balance forecast": month-end totals plus a
+  straight line at the average net of the last complete months. `backup.ts` handles JSON export/validate/restore,
   where restore replaces all data atomically and keeps ids. Version 1 files (no accounts) still import, into one
   default `Main` account; files before version 3 import with no transfers and an empty audit log. `legacy.ts` opens an old Go backend `sqlite3.db`
   in memory with sql.js and turns one user's rows into a `Backup`. `index.ts` has the `useAsync` hook that
