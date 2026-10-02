@@ -7,6 +7,13 @@ export function formatMoney(value: number): string {
   return `${value < 0 ? "-" : ""}$${money.format(Math.abs(value))}`;
 }
 
+const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
+
+/** "$1.2K", for chart axes. */
+export function formatMoneyShort(value: number): string {
+  return `${value < 0 ? "-" : ""}$${compact.format(Math.abs(value))}`;
+}
+
 /** "Today", "Yesterday", or e.g. "Mon, 3 Mar" (with the year if not this year). */
 export function formatDay(date: string | Date): string {
   const d = typeof date === "string" ? parseDate(date) : date;

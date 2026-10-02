@@ -34,7 +34,8 @@ remote uses the SSH host alias `github-personal`.
   changes need explicit migration code. `getDb()` is a lazy singleton. Tests swap it with `setDb(createNodeDb())`
   from `src/test/nodeDb.ts`.
 - `src/api/`: the former Go services, ported to plain async functions with hand-written SQL.
-  `transactions.ts` and `budgets.ts` hold the domain logic. `backup.ts` handles JSON export/validate/restore,
+  `transactions.ts` and `budgets.ts` hold the domain logic. `stats.ts` backs the Stats screen: every query
+  takes a `StatsFilter` (inclusive day range, text search, required tags) and returns positive amounts spent. `backup.ts` handles JSON export/validate/restore,
   where restore replaces all data atomically and keeps ids. `legacy.ts` opens an old Go backend `sqlite3.db`
   in memory with sql.js and turns one user's rows into a `Backup`. `index.ts` has the `useAsync` hook that
   components use for loading data.

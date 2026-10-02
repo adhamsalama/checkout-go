@@ -1,5 +1,5 @@
 import { IonButton, IonInput, IonList, IonSearchbar } from "@ionic/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDataVersion } from "../api";
 import { listExpenses, ExpenseFilters } from "../api/transactions";
 import { parseDate } from "../dates";
@@ -7,20 +7,12 @@ import { parseAmount } from "../format";
 import { Page } from "./ui/Page";
 import { TagPicker } from "./ui/TagPicker";
 import { TransactionRow } from "./ui/TransactionRow";
+import { useDebounced } from "./ui/useDebounced";
 import { LoadMore, usePagedList } from "./ui/usePagedList";
 import { SheetState, TransactionSheet } from "./TransactionSheet";
 
 type Draft = { name: string; min: string; max: string; tags: string[]; from: string; to: string };
 const EMPTY: Draft = { name: "", min: "", max: "", tags: [], from: "", to: "" };
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(id);
-  }, [value, ms]);
-  return debounced;
-}
 
 function toFilters(d: Draft): ExpenseFilters {
   const min = parseAmount(d.min);

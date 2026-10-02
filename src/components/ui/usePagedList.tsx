@@ -11,24 +11,26 @@ type Paged = { done: boolean; loadMore: () => Promise<void> };
  */
 export function usePagedList<T>(
   fetchPage: (opts: { limit: number; offset: number }) => Promise<T[]>,
-  key: unknown = null
+  key: unknown = null,
+  pageSize = PAGE
 ) {
   const [items, setItems] = useState<T[] | null>(null);
   const [done, setDone] = useState(false);
   const [generation, setGeneration] = useState(0);
 
   // `token` identifies the current reset, so pages from an older one are dropped.
-  const state = useRef({ token: 0, loading: false, done: false, count: 0, fetchPage });
+  const state = useRef({ token: 0, loading: false, done: false, count: 0, fetchPage, pageSize });
   state.current.fetchPage = fetchPage;
+  state.current.pageSize = pageSize;
 
   const load = useCallback(async (token: number, offset: number) => {
     const s = state.current;
     s.loading = true;
     try {
-      const page = await s.fetchPage({ limit: PAGE, offset });
+      const page = await s.fetchPage({ limit: s.pageSize, offset });
       if (token !== s.token) return;
       s.count = offset + page.length;
-      s.done = page.length < PAGE;
+      s.done = page.length < s.pageSize;
       setItems((prev) => (offset === 0 ? page : [...(prev ?? []), ...page]));
       setDone(s.done);
     } catch (err) {

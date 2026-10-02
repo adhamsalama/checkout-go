@@ -174,17 +174,24 @@ export async function listExpenses(filters: ExpenseFilters = {}): Promise<Expens
     where.push("date < ?");
     params.push(toLocalIso(end));
   }
-  return list(where, params, filters.limit, filters.offset);
+  return listWhere(where, params, filters.limit, filters.offset);
 }
 
 export function listPayments(opts: { limit?: number; offset?: number } = {}): Promise<Expense[]> {
-  return list(["price > 0"], [], opts.limit, opts.offset);
+  return listWhere(["price > 0"], [], opts.limit, opts.offset);
 }
 
-async function list(where: string[], params: SqlValue[], limit = -1, offset = 0) {
+/** Transactions matching all `where` clauses, newest first unless `orderBy` says otherwise. */
+export async function listWhere(
+  where: string[],
+  params: SqlValue[],
+  limit = -1,
+  offset = 0,
+  orderBy = "date DESC, id DESC"
+) {
   const db = await getDb();
   const rows = await db.query<TransactionRow>(
-    `SELECT * FROM transactions WHERE ${where.join(" AND ")} ORDER BY date DESC, id DESC LIMIT ? OFFSET ?`,
+    `SELECT * FROM transactions WHERE ${where.join(" AND ")} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
   return rows.map(toTransaction);

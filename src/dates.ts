@@ -40,3 +40,16 @@ export function normalizeDate(input?: string | Date | null): string {
   if (!input) return toLocalIso(new Date());
   return toLocalIso(parseDate(input));
 }
+
+/** Shifts a "YYYY-MM-DD" day by n days (negative goes back). */
+export function addDays(day: string, n: number): string {
+  const d = parseDate(day);
+  d.setDate(d.getDate() + n);
+  return toDateInput(d);
+}
+
+/** Whole days from one "YYYY-MM-DD" day to another (0 for the same day). */
+export function daysBetween(from: string, to: string): number {
+  // Rounding absorbs the hour lost or gained across a DST change.
+  return Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 86_400_000);
+}

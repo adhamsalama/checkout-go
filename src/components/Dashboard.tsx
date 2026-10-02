@@ -1,87 +1,111 @@
+import { useCallback, useEffect, useState } from "react";
 import { useAsync, useDataVersion } from "../api";
-import { getDailyExpenseStats, getMonthlyExpenseStats, getTagsStatistics } from "../api/transactions";
-import { formatMoney } from "../format";
-import { PALETTE } from "./chartTheme";
-import LineChart from "./LineChart";
-import PieChart from "./PieChart";
+import { getStatsSummary, StatsFilter } from "../api/stats";
+import { toDateInput } from "../dates";
+import { FilterBar } from "./stats/FilterBar";
+import { TopNames, WeekdaySpending } from "./stats/Habits";
+import { RangeBar } from "./stats/RangeBar";
+import { comparisonRange, elapsed, initialRange, Preset, RangeState, resolveRange, stepRange } from "./stats/range";
+import { RunningTotal } from "./stats/RunningTotal";
+import { SpendingOverTime } from "./stats/SpendingOverTime";
+import { countDays, Summary } from "./stats/Summary";
+import { TagBreakdown } from "./stats/TagBreakdown";
+import { YearOverYear } from "./stats/YearOverYear";
 import { Page } from "./ui/Page";
+import { useDebounced } from "./ui/useDebounced";
+import { SheetState, TransactionSheet } from "./TransactionSheet";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const TOP_TAGS = 8;
+const STORAGE_KEY = "stats.range";
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <>
-      <div className="section-title">{title}</div>
-      <div className="surface ion-padding">{children}</div>
-    </>
-  );
-}
-
-function TagBreakdown({ version }: { version: number }) {
-  const { data } = useAsync(getTagsStatistics, [version]);
-  if (!data) return null;
-  if (data.length === 0) return <div className="empty-state">Tag your expenses to see where money goes.</div>;
-  const top = data.slice(0, TOP_TAGS);
-  const rest = data.slice(TOP_TAGS).reduce((s, t) => s - t.sum, 0);
-  const rows = [...top.map((t) => ({ tag: t.tag, amount: -t.sum, count: t.count })),
-    ...(rest > 0 ? [{ tag: "Other tags", amount: rest, count: 0 }] : [])];
-  const total = rows.reduce((s, r) => s + r.amount, 0);
-  return (
-    <>
-      <PieChart labels={rows.map((r) => r.tag)} data={rows.map((r) => r.amount)} />
-      <div className="legend">
-        {rows.map((r, i) => (
-          <div key={r.tag} className="legend-row">
-            <span className="legend-swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
-            <span className="legend-name">{r.tag}</span>
-            <span className="row-sub">{total ? Math.round((r.amount / total) * 100) : 0}%</span>
-            <span className="amount legend-amount">{formatMoney(r.amount)}</span>
-          </div>
-        ))}
-      </div>
-    </>
-  );
+/** The last preset (and custom dates), always anchored on today when the app opens. */
+function loadRange(): RangeState {
+  const fresh = initialRange();
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<RangeState> | null;
+    const presets: Preset[] = ["month", "3m", "year", "all", "custom"];
+    if (!saved || !presets.includes(saved.preset as Preset)) return fresh;
+    const custom = saved.preset === "custom" && saved.from && saved.to && saved.from <= saved.to;
+    return { ...fresh, preset: saved.preset!, ...(custom && { from: saved.from, to: saved.to }) };
+  } catch {
+    return fresh;
+  }
 }
 
 function Dashboard() {
   const version = useDataVersion();
-  const now = new Date();
-  const years = [0, 1, 2].map((i) => now.getFullYear() - i);
-  const { data: yearly } = useAsync(() => Promise.all(years.map(getMonthlyExpenseStats)), [version]);
+  const today = toDateInput(new Date());
+  const [rangeState, setRangeState] = useState(loadRange);
+  const [query, setQuery] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [sheet, setSheet] = useState<SheetState>(null);
+  const closeSheet = useCallback(() => setSheet(null), []);
 
-  const monthStarts = [0, 1].map((i) => new Date(now.getFullYear(), now.getMonth() - i, 1));
-  const { data: daily } = useAsync(
-    () => Promise.all(monthStarts.map((d) => getDailyExpenseStats(d.getFullYear(), d.getMonth() + 1))),
-    [version]
-  );
+  useEffect(() => {
+    try {
+      const { preset, from, to } = rangeState;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ preset, from, to }));
+    } catch {
+      // Not remembered; fine.
+    }
+  }, [rangeState]);
+
+  const range = resolveRange(rangeState);
+  const debouncedQuery = useDebounced(query, 250);
+  const filter: StatsFilter = { from: range.from, to: range.to, query: debouncedQuery, tags };
+  const { data: summary } = useAsync(() => getStatsSummary(filter), [JSON.stringify(filter), version]);
+
+  // "All" starts at the first matching expense; every range stops at today for averages and charts.
+  const span = elapsed(range, today);
+  const from = span.from ?? summary?.firstDay ?? today;
+  const to = span.to ?? today;
+  const days = countDays(from, to);
+  const runningMonth = rangeState.preset === "month" && range.from! <= today && range.to! >= today;
 
   return (
     <Page title="Stats">
-      <Card title="Spending by tag">
-        <TagBreakdown version={version} />
-      </Card>
-      <Card title="Daily spending">
-        <LineChart
-          labels={Array.from({ length: 31 }, (_, i) => i + 1)}
-          datasets={(daily ?? []).map((days, i) => ({
-            label: monthStarts[i].toLocaleDateString(undefined, { month: "long" }),
-            data: days.slice(0, i === 0 ? now.getDate() : undefined).map((d) => -d.sum),
-          }))}
+      <RangeBar state={rangeState} onChange={setRangeState} today={today} />
+      <FilterBar query={query} onQuery={setQuery} tags={tags} onTags={setTags} />
+      {summary && (
+        <Summary
+          summary={summary}
+          filter={filter}
+          days={days}
+          comparison={comparisonRange(rangeState, today)}
+          projectTo={runningMonth ? Number(range.to!.slice(8, 10)) : undefined}
+          version={version}
         />
-      </Card>
-      <Card title="Monthly spending">
-        <LineChart
-          labels={MONTHS}
-          datasets={(yearly ?? [])
-            .map((months, i) => ({
-              label: String(years[i]),
-              // Don't draw future months of the current year as zero spending.
-              data: months.slice(0, i === 0 ? now.getMonth() + 1 : 12).map((m) => -m.sum),
-            }))
-            .filter((d, i) => i === 0 || d.data.some((v) => v > 0))}
-        />
-      </Card>
+      )}
+      {summary && summary.count === 0 && (
+        <div className="empty-state">
+          {debouncedQuery || tags.length ? "No matching expenses in this range." : "No expenses in this range."}
+        </div>
+      )}
+      {summary && summary.count > 0 && days > 0 && (
+        <>
+          <SpendingOverTime
+            filter={filter}
+            from={from}
+            to={to}
+            total={summary.count}
+            version={version}
+            onOpen={setSheet}
+          />
+          {rangeState.preset === "month" && (
+            <RunningTotal
+              filter={filter}
+              month={range}
+              previous={resolveRange(stepRange(rangeState, -1))}
+              today={today}
+              version={version}
+            />
+          )}
+          <TagBreakdown filter={filter} spent={summary.spent} version={version} onTags={setTags} />
+          {days >= 7 && <WeekdaySpending filter={filter} from={from} to={to} version={version} />}
+          <TopNames filter={filter} version={version} onName={setQuery} />
+        </>
+      )}
+      <YearOverYear filter={{ query: debouncedQuery, tags }} version={version} onOpen={setSheet} />
+      <TransactionSheet state={sheet} onClose={closeSheet} />
     </Page>
   );
 }
