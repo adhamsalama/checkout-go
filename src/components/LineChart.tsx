@@ -1,93 +1,56 @@
 import {
   Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
   CategoryScale,
+  Filler,
+  Legend,
   LinearScale,
-  PointElement,
   LineElement,
-  Title,
+  PointElement,
+  Tooltip,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { formatMoney } from "../format";
+import { chartColors, PALETTE } from "./chartTheme";
 
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  Title,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
 
 export default function LineChart({
-  label,
   labels,
   datasets,
 }: {
-  label: string;
   labels: (string | number)[];
-  datasets: {
-    label: string;
-    // labels: string[];
-    data: number[];
-  }[];
+  datasets: { label: string; data: number[] }[];
 }) {
-  const options = {
-    responsive: true,
-    interaction: {
-      mode: "index" as const,
-      intersect: false,
-    },
-    stacked: false,
-    plugins: {
-      title: {
-        display: true,
-        text: label,
-      },
-    },
-    scales: {
-      y: {
-        type: "linear" as const,
-        display: true,
-        position: "left" as const,
-      },
-      // y1: {
-      //   type: "linear" as const,
-      //   display: true,
-      //   position: "right" as const,
-      //   grid: {
-      //     drawOnChartArea: false,
-      //   },
-      // },
-    },
-  };
+  const { text, grid } = chartColors();
   return (
-    <Line
-      options={options}
-      data={{
-        labels,
-        datasets: datasets.map((line, index) => {
-          return {
-            label: line.label,
-            data: line.data,
-            backgroundColor: `rgb(${Math.random() * (index + 1) * 100},${
-              Math.random() * (index + 1) * 200
-            },${Math.random() * (index + 1) * 255} )`,
-          };
-        }),
-        // datasets: [
-        //   {
-        //     label,
-        //     data,
-        //     backgroundColor: `rgb(${Math.random() * 255},${
-        //       Math.random() * 255
-        //     },${Math.random() * 255} )`,
-        //   },
-        // ],
-      }}
-    />
+    <div className="chart-box">
+      <Line
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "bottom", labels: { color: text, boxWidth: 12 } },
+            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${formatMoney(c.parsed.y ?? 0)}` } },
+          },
+          scales: {
+            x: { ticks: { color: text, maxRotation: 0, autoSkipPadding: 8 }, grid: { display: false } },
+            y: { ticks: { color: text }, grid: { color: grid }, beginAtZero: true },
+          },
+        }}
+        data={{
+          labels,
+          datasets: datasets.map((d, i) => ({
+            ...d,
+            borderColor: PALETTE[i % PALETTE.length],
+            backgroundColor: PALETTE[i % PALETTE.length],
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHitRadius: 12,
+            cubicInterpolationMode: "monotone" as const,
+          })),
+        }}
+      />
+    </div>
   );
 }

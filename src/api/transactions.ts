@@ -289,3 +289,23 @@ export async function getCumulativeBalancePerMonth(): Promise<
      FROM monthly ORDER BY year_month`
   );
 }
+
+/** Every tag in use, most used first. */
+export async function getAllTags(): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.query<{ tag: string }>(
+    `SELECT tag.value AS tag FROM transactions, json_each(transactions.tags) AS tag
+     GROUP BY tag.value ORDER BY COUNT(*) DESC, tag.value`
+  );
+  return rows.map((r) => r.tag);
+}
+
+/** Sum of the current month's payments (positive or 0). */
+export async function getCurrentMonthIncomeSum(now = new Date()): Promise<number> {
+  const db = await getDb();
+  const [row] = await db.query<{ total: number }>(
+    "SELECT COALESCE(SUM(price), 0) AS total FROM transactions WHERE price > 0 AND strftime('%Y-%m', date) = ?",
+    [toLocalIso(now).slice(0, 7)]
+  );
+  return row?.total ?? 0;
+}

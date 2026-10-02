@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert, Button, Card, Form } from "react-bootstrap";
+import { Page } from "./ui/Page";
 import { Capacitor } from "@capacitor/core";
 import { alertError, useAsync } from "../api";
 import { Backup, counts, exportBackup, ImportSummary, parseBackup, restoreBackup } from "../api/backup";
@@ -108,12 +109,11 @@ export default function SettingsPage() {
   });
 
   return (
-    <>
-      <h1>Backup</h1>
-      <p>All data is stored only on this device. {current && `Currently: ${describe(current)}.`}</p>
+    <Page title="Backup">
+      <p className="px-1">All data is stored only on this device. {current && `Currently: ${describe(current)}.`}</p>
       {message && <Alert variant="success">{message}</Alert>}
 
-      <Card className="mb-3">
+      <Card className="mb-3 border-0 surface">
         <Card.Body>
           <Card.Title>Export</Card.Title>
           <Card.Text>Save all data as a JSON file you can import later or on another device.</Card.Text>
@@ -123,7 +123,7 @@ export default function SettingsPage() {
         </Card.Body>
       </Card>
 
-      <Card className="mb-3">
+      <Card className="mb-3 border-0 surface">
         <Card.Body>
           <Card.Title>Import backup</Card.Title>
           <Card.Text>Restore a JSON file made with Export. This replaces all current data.</Card.Text>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
         </Card.Body>
       </Card>
 
-      <Card className="mb-3">
+      <Card className="mb-3 border-0 surface">
         <Card.Body>
           <Card.Title>Import from the old server</Card.Title>
           <Card.Text>
@@ -166,6 +166,6 @@ export default function SettingsPage() {
           )}
         </Card.Body>
       </Card>
-    </>
+    </Page>
   );
 }

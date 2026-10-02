@@ -1,131 +1,101 @@
-import { useEffect, useState } from "react";
-import { Expense as ExpenseType } from "../types";
-import { Expense } from "./Expense";
-import { Button, Col, Modal, Row, Alert } from "react-bootstrap";
-import AddProduct from "./AddExpense";
+import { useCallback, useState } from "react";
+import ProgressBar from "react-bootstrap/ProgressBar";
+import { Search } from "react-bootstrap-icons";
+import { useNavigate } from "react-router-dom";
 import { useAsync } from "../api";
-import { getBalance, getCurrentMonthExpensesSum, listExpenses } from "../api/transactions";
 import { getMonthlyBudget } from "../api/budgets";
+import { getBalance, getCurrentMonthExpensesSum, listExpenses } from "../api/transactions";
+import { formatDay, formatMoney } from "../format";
+import { Fab } from "./ui/Fab";
+import { Page } from "./ui/Page";
+import { groupByDay, TransactionRow } from "./ui/TransactionRow";
+import { usePagedList } from "./ui/usePagedList";
+import { SheetState, TransactionSheet } from "./TransactionSheet";
 
-export function ListExpenses() {
-  function deleteExpense(id: number) {
-    setExpenses(expenses?.filter((expense) => expense.id !== id));
-    refreshTotals();
-  }
+export function budgetVariant(percentLeft: number) {
+  if (percentLeft >= 50) return "success";
+  if (percentLeft >= 25) return "warning";
+  return "danger";
+}
 
-  const { data: balance, reload: reloadBalance } = useAsync(getBalance);
-  const { data: budget } = useAsync(getMonthlyBudget);
-  const { data: currentMonthSum, reload: reloadMonthSum } = useAsync(() =>
-    getCurrentMonthExpensesSum()
-  );
-  const refreshTotals = () => {
-    reloadBalance();
-    reloadMonthSum();
-  };
+function Summary({ version }: { version: number }) {
+  const { data: balance } = useAsync(getBalance, [version]);
+  const { data: spent } = useAsync(() => getCurrentMonthExpensesSum(), [version]);
+  const { data: budget } = useAsync(getMonthlyBudget, [version]);
+  const spentAbs = -(spent ?? 0);
+  const remaining = budget ? budget.value - spentAbs : 0;
+  const percentLeft = budget ? (remaining / budget.value) * 100 : 0;
 
-  const [expenses, setExpenses] = useState<ExpenseType[]>();
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [warning, setWarning] = useState<string | null>(null);
-  const [remainingBudget, setRemainingBudget] = useState<number | null>(null);
-  const [alertVariant, setAlertVariant] = useState("success");
-  const OFFSET_STEP = 20;
-
-  useEffect(() => {
-    if (!hasMore) return;
-    const handleScroll = () => {
-      const bottom =
-        Math.ceil(window.innerHeight + window.scrollY) >=
-        document.documentElement.scrollHeight;
-      if (bottom) setOffset((o) => o + OFFSET_STEP);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore]);
-
-  useEffect(() => {
-    listExpenses({ offset, limit: OFFSET_STEP }).then((data) => {
-      if (data.length < OFFSET_STEP) setHasMore(false);
-      setExpenses((prev) => {
-        const seen = new Set((prev ?? []).map((e) => e.id));
-        return [...(prev ?? []), ...data.filter((e) => !seen.has(e.id))];
-      });
-    });
-  }, [offset]);
-
-  useEffect(() => {
-    if (budget && currentMonthSum !== null) {
-      const spent = -(currentMonthSum ?? 0);
-      const remaining = budget.value - spent;
-      setRemainingBudget(remaining);
-
-      const budgetPercentage = (remaining / budget.value) * 100;
-      if (budgetPercentage >= 75) setAlertVariant("success");
-      else if (budgetPercentage >= 50) setAlertVariant("primary");
-      else if (budgetPercentage >= 25) setAlertVariant("warning");
-      else setAlertVariant("danger");
-
-      if (spent > budget.value) {
-        setWarning("Warning: Your current expenses exceed your monthly budget!");
-      } else {
-        setWarning(null);
-      }
-    }
-  }, [budget, currentMonthSum]);
-
-  const [showEditModal, setShowEditModal] = useState(false);
   return (
-    <>
-      <h1>Balance: ${(balance ?? 0).toFixed(2)}</h1>
-      {budget && currentMonthSum !== null && (
-        <>
-          <h2>Spent This Month: ${(-currentMonthSum).toFixed(2)}</h2>
-          <h2>Monthly Budget: ${budget.value.toFixed(2)}</h2>
-        </>
+    <div className="surface p-3">
+      <div className="stat-label">Balance</div>
+      <div className="balance-value">{balance === null ? "…" : formatMoney(balance)}</div>
+      <div className="d-flex mt-3 gap-3">
+        <div className="flex-fill">
+          <div className="stat-label">Spent this month</div>
+          <div className="stat-value">{formatMoney(spentAbs)}</div>
+        </div>
+        {budget && (
+          <div className="flex-fill text-end">
+            <div className="stat-label">{remaining >= 0 ? "Left in budget" : "Over budget"}</div>
+            <div className={`stat-value ${remaining < 0 ? "text-danger" : ""}`}>
+              {formatMoney(Math.abs(remaining))}
+            </div>
+          </div>
+        )}
+      </div>
+      {budget && (
+        <ProgressBar
+          className="mt-2"
+          style={{ height: 8 }}
+          variant={budgetVariant(percentLeft)}
+          now={Math.min(100, (spentAbs / budget.value) * 100)}
+          aria-label="Monthly budget used"
+        />
       )}
-      {remainingBudget !== null && (
-        <Alert variant={alertVariant}>Remaining Budget: ${remainingBudget.toFixed(2)}</Alert>
-      )}
-      {warning && <Alert variant="danger">{warning}</Alert>}
-      <Button
-        variant="primary"
-        onClick={() => setShowEditModal(true)}
-        style={{ margin: "10px" }}
-      >
-        Add Expense
-      </Button>
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add Expense</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <AddProduct
-            func={(expense: ExpenseType) => {
-              setExpenses(expenses ? [expense, ...expenses] : [expense]);
-              setShowEditModal(false);
-              refreshTotals();
-            }}
-          />
-        </Modal.Body>
-      </Modal>
-      {expenses ? (
-        <Row xs={1} md={2} lg={4} className="g-4">
-          {expenses.map((expense) => {
-            return (
-              <Col key={expense.id}>
-                <Expense
-                  key={expense.id}
-                  {...expense}
-                  deleteExpense={deleteExpense}
-                />
-              </Col>
-            );
-          })}
-        </Row>
-      ) : (
-        <h1>No expenses</h1>
-      )}
-    </>
+    </div>
   );
 }
 
+export function ListExpenses() {
+  const navigate = useNavigate();
+  const [sheet, setSheet] = useState<SheetState>(null);
+  const [version, setVersion] = useState(0);
+  const { items, done, sentinel, reset } = usePagedList(listExpenses);
+  const closeSheet = useCallback(() => setSheet(null), []);
+  const onSaved = useCallback(() => {
+    setVersion((v) => v + 1);
+    reset();
+  }, [reset]);
+
+  return (
+    <Page
+      title="Expenses"
+      actions={
+        <button className="icon-btn" aria-label="Search" onClick={() => navigate("/search")}>
+          <Search size={20} />
+        </button>
+      }
+    >
+      <Summary version={version} />
+      {items?.length === 0 && <div className="empty-state">No expenses yet. Tap + to add one.</div>}
+      {items &&
+        groupByDay(items).map((group) => (
+          <section key={group.day}>
+            <div className="section-title d-flex justify-content-between">
+              <span>{formatDay(group.day)}</span>
+              <span>{formatMoney(group.items.reduce((sum, t) => sum + t.price, 0))}</span>
+            </div>
+            <div className="list">
+              {group.items.map((t) => (
+                <TransactionRow key={t.id} t={t} onClick={() => setSheet({ kind: "expense", transaction: t })} />
+              ))}
+            </div>
+          </section>
+        ))}
+      {!done && <div ref={sentinel} className="empty-state">Loading…</div>}
+      <Fab label="Add expense" onClick={() => setSheet({ kind: "expense" })} />
+      <TransactionSheet state={sheet} onClose={closeSheet} onSaved={onSaved} />
+    </Page>
+  );
+}

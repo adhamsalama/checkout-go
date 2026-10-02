@@ -32,7 +32,13 @@ cd android && ./gradlew assembleDebug                # needs Android SDK + JDK 2
   where restore replaces all data atomically and keeps ids. `legacy.ts` opens an old Go backend `sqlite3.db`
   in memory with sql.js and turns one user's rows into a `Backup`. `index.ts` has the `useAsync` hook that
   components use for loading data.
-- Components call `src/api/*` directly. There's no global state. Pages reload or patch their own lists after mutations.
+- Components call `src/api/*` directly. There's no global state. After a save, pages bump a `version` counter or
+  call `reset()` from `usePagedList`.
+- Mobile UI shell (`src/components/ui/`): every screen renders inside `<Page>` (fixed top bar), `App` renders
+  `<TabBar>`, and add/edit forms are `<Sheet>` bottom sheets opened by a `<Fab>`. `backButton.ts` makes Android back
+  close the top sheet before navigating, and tabs navigate with `replace` so back from a tab exits the app.
+  `styles.css` pads the bars with the safe-area insets Capacitor injects (`SystemBars.insetsHandling: "css"`).
+  Theme follows the system via `data-bs-theme` (`src/theme.ts`), and colours are CSS variables.
 
 ## Data conventions
 

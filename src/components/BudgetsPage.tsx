@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Button, Card, Modal, Form } from "react-bootstrap";
-import { alertError } from "../api";
+import { useCallback, useEffect, useState } from "react";
+import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
+import ProgressBar from "react-bootstrap/ProgressBar";
+import { alertError, useAsync } from "../api";
 import {
   createTaggedBudget,
   deleteMonthlyBudget,
@@ -8,240 +10,221 @@ import {
   getMonthlyBudget,
   getTaggedBudgetStats,
   saveMonthlyBudget,
+  updateTaggedBudget,
 } from "../api/budgets";
+import { getAllTags, getCurrentMonthExpensesSum } from "../api/transactions";
+import { formatMoney, parseAmount } from "../format";
 import { TaggedBudgetStats } from "../types";
+import { budgetVariant } from "./ListExpenses";
+import { Fab } from "./ui/Fab";
+import { Page } from "./ui/Page";
+import { Sheet } from "./ui/Sheet";
 
-interface Budget {
-  id: number;
+function BudgetProgress({ name, sub, value, spent, onClick }: {
   name: string;
+  sub?: string;
   value: number;
+  spent: number;
+  onClick: () => void;
+}) {
+  const remaining = value - spent;
+  const percentLeft = (remaining / value) * 100;
+  return (
+    <button className="row-item d-block" onClick={onClick}>
+      <div className="d-flex justify-content-between align-items-baseline gap-2">
+        <div className="row-main">
+          <div className="row-title">{name}</div>
+          {sub && <div className="row-sub">{sub}</div>}
+        </div>
+        <div className="text-end">
+          <div className="amount">{formatMoney(spent)}</div>
+          <div className="row-sub">of {formatMoney(value)}</div>
+        </div>
+      </div>
+      <ProgressBar
+        className="mt-2"
+        style={{ height: 8 }}
+        variant={budgetVariant(percentLeft)}
+        now={Math.min(100, (spent / value) * 100)}
+      />
+      <div className={`row-sub mt-1 ${remaining < 0 ? "text-danger" : ""}`}>
+        {remaining >= 0 ? `${formatMoney(remaining)} left` : `${formatMoney(-remaining)} over`}
+      </div>
+    </button>
+  );
 }
 
-const BudgetCard: React.FC<{ budget: Budget; onEdit: () => void; onDelete: () => void }> = ({ budget, onEdit, onDelete }) => (
-  <Col md={4} className="mb-3">
-    <Card>
-      <Card.Body>
-        <Card.Title>{budget.name}</Card.Title>
-        <Card.Text>Value: ${budget.value}</Card.Text>
-        <Button variant="warning" onClick={onEdit} className="me-2">
-          Edit
-        </Button>
-        <Button variant="danger" onClick={onDelete}>
-          Delete
-        </Button>
-      </Card.Body>
-    </Card>
-  </Col>
-);
+type Editing =
+  | { kind: "monthly" }
+  | { kind: "tagged"; budget?: TaggedBudgetStats }
+  | null;
 
+function BudgetSheet({ editing, hasMonthly, onClose, onSaved }: {
+  editing: Editing;
+  hasMonthly: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { data: knownTags } = useAsync(getAllTags);
+  const [name, setName] = useState("");
+  const [value, setValue] = useState("");
+  const [tag, setTag] = useState("");
 
-const BudgetPage: React.FC = () => {
-  const [budget, setBudget] = useState<Budget | null>(null);
-  const [name, setName] = useState<string>("");
-  const [value, setValue] = useState<number>(0);
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const [statsVersion, setStatsVersion] = useState(0);
-
+  const monthly = useAsync(getMonthlyBudget, [editing]);
   useEffect(() => {
-    getMonthlyBudget()
-      .then((data) => {
-        setBudget(data);
-        if (data) {
-          setName(data.name);
-          setValue(data.value);
-        }
-      })
-      .catch((error) => console.error(error));
-  }, []);
+    if (!editing) return;
+    if (editing.kind === "monthly") {
+      setName(monthly.data?.name ?? "Monthly budget");
+      setValue(monthly.data ? String(monthly.data.value) : "");
+    } else {
+      setName(editing.budget?.name ?? "");
+      setValue(editing.budget ? String(editing.budget.value) : "");
+      setTag(editing.budget?.tag ?? "");
+    }
+  }, [editing, monthly.data]);
 
-  const handleSaveBudget = (e: React.FormEvent<HTMLFormElement>) => {
+  const isTagged = editing?.kind === "tagged";
+  const existing = editing?.kind === "tagged" ? editing.budget : hasMonthly;
+
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveMonthlyBudget({ name, value })
-      .then((data: Budget) => {
-        setBudget(data);
-        setShowModal(false);
-      })
-      .catch(alertError);
-  };
-
-  const handleDeleteBudget = () => {
-    if (window.confirm("Are you sure you want to delete this budget?")) {
-      deleteMonthlyBudget()
-        .then(() => {
-          setBudget(null);
-          setName("");
-          setValue(0);
-        })
-        .catch(alertError);
+    const amount = parseAmount(value);
+    try {
+      if (editing?.kind === "monthly") {
+        await saveMonthlyBudget({ name: name.trim() || "Monthly budget", value: amount });
+      } else if (editing?.kind === "tagged") {
+        const input = { name: name.trim() || tag.trim(), value: amount, tag };
+        if (editing.budget) await updateTaggedBudget(editing.budget.id, input);
+        else await createTaggedBudget(input);
+      }
+      onSaved();
+      onClose();
+    } catch (err) {
+      alertError(err);
     }
   };
 
-  return (
-    <Container>
-      <Row className="mb-3">
-        <Col>
-          <Button
-            variant="primary"
-            onClick={() => setShowModal(true)}
-          >
-            {budget ? "Edit Monthly Budget" : "Add Monthly Budget"}
-          </Button>
-        </Col>
-      </Row>
-      <Row>
-        {budget && <BudgetCard budget={budget} onEdit={() => setShowModal(true)} onDelete={handleDeleteBudget} />}
-      </Row>
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{budget ? "Edit Budget" : "Add Budget"}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSaveBudget}>
-            <Form.Group controlId="name">
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter budget name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group controlId="value" className="mt-3">
-              <Form.Label>Value</Form.Label>
-              <Form.Control
-                type="number"
-                placeholder="Enter budget value"
-                value={value}
-                onChange={(e) => setValue(Number(e.target.value))}
-              />
-            </Form.Group>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={() => setShowModal(false)}>
-                Close
-              </Button>
-              <Button variant="primary" type="submit">
-                Save Budget
-              </Button>
-            </Modal.Footer>
-          </Form>
-        </Modal.Body>
-      </Modal>
-      <TaggedBudgetManager onCreated={() => setStatsVersion((v) => v + 1)} />
-      <BudgetStats version={statsVersion} />
-    </Container>
-  );
-};
-
-
-
-const TaggedBudgetManager: React.FC<{ onCreated: () => void }> = ({ onCreated }) => {
-  const [newTaggedBudget, setNewTaggedBudget] = useState({ name: "", value: 0, tag: "" });
-
-  const addBudget = () => {
-    createTaggedBudget(newTaggedBudget)
-      .then(() => {
-        setNewTaggedBudget({ name: "", value: 0, tag: "" });
-        onCreated();
-      })
-      .catch(alertError);
+  const remove = async () => {
+    if (!window.confirm("Delete this budget?")) return;
+    try {
+      if (editing?.kind === "monthly") await deleteMonthlyBudget();
+      else if (editing?.kind === "tagged" && editing.budget) await deleteTaggedBudget(editing.budget.id);
+      onSaved();
+      onClose();
+    } catch (err) {
+      alertError(err);
+    }
   };
 
+  const title = isTagged ? (existing ? "Edit tag budget" : "New tag budget") : "Monthly budget";
   return (
-    <div>
-      <Form>
-        <h2>Create Tagged Budget</h2>
-        <Form.Group className="mb-2">
+    <Sheet show={editing !== null} onClose={onClose} title={title}>
+      <Form onSubmit={save}>
+        <Form.Control
+          className="amount-input mb-2"
+          aria-label="Budget amount"
+          placeholder="0.00"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        {isTagged && (
+          <Form.Group className="mb-3">
+            <Form.Label>Tag</Form.Label>
+            <div className="mb-2">
+              {(knownTags ?? []).map((t) => (
+                <button
+                  type="button"
+                  key={t}
+                  className={`chip${t === tag ? " selected" : ""}`}
+                  onClick={() => setTag(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <Form.Control placeholder="Tag" value={tag} onChange={(e) => setTag(e.target.value)} />
+            <Form.Text>Counts this month's expenses with this tag.</Form.Text>
+          </Form.Group>
+        )}
+        <Form.Group className="mb-3">
           <Form.Label>Name</Form.Label>
           <Form.Control
-            type="text"
-            value={newTaggedBudget.name}
-            onChange={(e) =>
-              setNewTaggedBudget({ ...newTaggedBudget, name: e.target.value })
-            }
+            value={name}
+            placeholder={isTagged ? tag || "e.g. Food" : "Monthly budget"}
+            onChange={(e) => setName(e.target.value)}
           />
         </Form.Group>
-        <Form.Group className="mb-2">
-          <Form.Label>Value</Form.Label>
-          <Form.Control
-            type="number"
-            value={newTaggedBudget.value}
-            onChange={(e) =>
-              setNewTaggedBudget({
-                ...newTaggedBudget,
-                value: parseFloat(e.target.value),
-              })
-            }
-          />
-        </Form.Group>
-        <Form.Group className="mb-2">
-          <Form.Label>Tag</Form.Label>
-          <Form.Control
-            type="text"
-            value={newTaggedBudget.tag}
-            onChange={(e) =>
-              setNewTaggedBudget({ ...newTaggedBudget, tag: e.target.value })
-            }
-          />
-        </Form.Group>
-        <Button variant="primary" onClick={addBudget}>
-          Add Budget
-        </Button>
+        <div className="d-grid gap-2">
+          <Button type="submit" size="lg">
+            Save
+          </Button>
+          {existing && (
+            <Button variant="outline-danger" onClick={remove}>
+              Delete
+            </Button>
+          )}
+        </div>
       </Form>
-    </div>
+    </Sheet>
   );
-};
+}
 
-const BudgetStatCard: React.FC<{ stat: TaggedBudgetStats, onDelete: () => void }> = ({ stat, onDelete }) => {
-  const spent = -(stat.totalPrice ?? 0);
-  const remaining = stat.value - spent;
-  const percentageLeft = (remaining / stat.value) * 100;
-
-  let bgColor = "bg-danger";
-  if (percentageLeft >= 75) bgColor = "bg-success";
-  else if (percentageLeft >= 50) bgColor = "bg-primary";
-  else if (percentageLeft >= 25) bgColor = "bg-warning";
+const BudgetPage = () => {
+  const [version, setVersion] = useState(0);
+  const [editing, setEditing] = useState<Editing>(null);
+  const { data: monthly } = useAsync(getMonthlyBudget, [version]);
+  const { data: spent } = useAsync(() => getCurrentMonthExpensesSum(), [version]);
+  const { data: tagged } = useAsync(() => getTaggedBudgetStats(), [version]);
+  const onSaved = useCallback(() => setVersion((v) => v + 1), []);
+  const onClose = useCallback(() => setEditing(null), []);
 
   return (
-    <Card className={`mb-3 text-white ${bgColor}`}>
-      <Card.Body>
-        <Card.Title>{stat.name}</Card.Title>
-        <Card.Text>
-          <strong>Budget:</strong> ${stat.value.toFixed(2)} <br />
-          <strong>Spent:</strong> ${spent.toFixed(2)} <br />
-          <strong>Remaining:</strong> ${remaining.toFixed(2)} <br />
-          <strong>Tag:</strong> {stat.tag} <br />
-        </Card.Text>
-        <Button variant="danger" onClick={onDelete}>
-          Delete
-        </Button>
-      </Card.Body>
-    </Card>
-  );
-};
+    <Page title="Budgets">
+      <div className="section-title mt-0">This month</div>
+      <div className="list">
+        {monthly ? (
+          <BudgetProgress
+            name={monthly.name}
+            sub="All expenses"
+            value={monthly.value}
+            spent={-(spent ?? 0)}
+            onClick={() => setEditing({ kind: "monthly" })}
+          />
+        ) : (
+          <button className="row-item" onClick={() => setEditing({ kind: "monthly" })}>
+            <div className="row-main">
+              <div className="row-title text-primary">Set a monthly budget</div>
+              <div className="row-sub">Track total spending each month</div>
+            </div>
+          </button>
+        )}
+      </div>
 
-const BudgetStats: React.FC<{ version: number }> = ({ version }) => {
-  const [budgetStats, setBudgetStats] = useState<TaggedBudgetStats[]>([]);
-
-  useEffect(() => {
-    getTaggedBudgetStats().then(setBudgetStats).catch(console.error);
-  }, [version]);
-  const deleteBudget = (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this budget?")) return;
-    deleteTaggedBudget(id)
-      .then(() => setBudgetStats(budgetStats.filter((budget) => budget.id !== id)))
-      .catch(alertError);
-  };
-  return (
-    <div>
-      <h2>Budget Stats</h2>
-      {budgetStats.map((stat) => (
-        <BudgetStatCard key={stat.id} stat={stat}
-          onDelete={() => deleteBudget(stat.id)}
-        />
-      ))}
-    </div>
+      <div className="section-title">By tag</div>
+      {tagged?.length === 0 && (
+        <div className="list">
+          <div className="empty-state">No tag budgets. Tap + to limit spending on a tag.</div>
+        </div>
+      )}
+      {tagged && tagged.length > 0 && (
+        <div className="list">
+          {tagged.map((b) => (
+            <BudgetProgress
+              key={b.id}
+              name={b.name}
+              sub={`#${b.tag}`}
+              value={b.value}
+              spent={-b.totalPrice}
+              onClick={() => setEditing({ kind: "tagged", budget: b })}
+            />
+          ))}
+        </div>
+      )}
+      <Fab label="Add tag budget" onClick={() => setEditing({ kind: "tagged" })} />
+      <BudgetSheet editing={editing} hasMonthly={!!monthly} onClose={onClose} onSaved={onSaved} />
+    </Page>
   );
 };
 
 export default BudgetPage;
-

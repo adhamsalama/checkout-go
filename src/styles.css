@@ -1,0 +1,303 @@
+/* Mobile app shell on top of Bootstrap. Safe-area insets come from Capacitor's SystemBars
+   (--safe-area-inset-*) on Android, or env() in browsers. */
+:root {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --topbar-height: 56px;
+  --tabbar-height: 60px;
+  --app-bg: #f2f3f5;
+  --surface: #ffffff;
+  --row-active: rgba(0, 0, 0, 0.06);
+  --expense: #c62828;
+  --income: #2e7d32;
+}
+
+[data-bs-theme="dark"] {
+  --app-bg: #101114;
+  --surface: #1c1e22;
+  --row-active: rgba(255, 255, 255, 0.08);
+  --expense: #ef8a8a;
+  --income: #7fcf86;
+}
+
+html,
+body {
+  background: var(--app-bg);
+  overscroll-behavior-y: none;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Prevents zoom-on-focus and keeps inputs readable. */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+.app-main {
+  padding: calc(var(--topbar-height) + var(--safe-top) + 12px) calc(12px + var(--safe-right))
+    calc(var(--tabbar-height) + var(--safe-bottom) + 88px) calc(12px + var(--safe-left));
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.topbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1030;
+  padding: var(--safe-top) calc(4px + var(--safe-right)) 0 calc(4px + var(--safe-left));
+  height: calc(var(--topbar-height) + var(--safe-top));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.topbar-title {
+  flex: 1;
+  margin: 0 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+}
+.icon-btn:active {
+  background: var(--row-active);
+}
+
+.tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 1030;
+  display: flex;
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  height: calc(var(--tabbar-height) + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--bs-border-color-translucent);
+  user-select: none;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+}
+.tab.active {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+.tab .tab-icon {
+  padding: 2px 18px;
+  border-radius: 16px;
+}
+.tab.active .tab-icon {
+  background: var(--bs-primary-bg-subtle);
+}
+
+.fab {
+  position: fixed;
+  right: calc(16px + var(--safe-right));
+  bottom: calc(var(--tabbar-height) + var(--safe-bottom) + 16px);
+  z-index: 1031;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--bs-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.fab:active {
+  filter: brightness(0.9);
+}
+
+.surface {
+  background: var(--surface);
+  border-radius: 16px;
+}
+
+.section-title {
+  margin: 20px 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+}
+
+.list {
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.row-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  user-select: none;
+}
+.row-item + .row-item {
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.row-item:active {
+  background: var(--row-active);
+}
+.row-main {
+  flex: 1;
+  min-width: 0;
+}
+.row-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-sub {
+  font-size: 0.82rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.amount.expense {
+  color: var(--expense);
+}
+.amount.income {
+  color: var(--income);
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  margin: 0 4px 4px 0;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  border: 1px solid transparent;
+}
+button.chip {
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+button.chip.selected {
+  background: var(--bs-primary-bg-subtle);
+  border-color: var(--bs-primary);
+  color: var(--bs-primary-text-emphasis);
+}
+
+.stat-label {
+  font-size: 0.82rem;
+  color: var(--bs-secondary-color);
+}
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.balance-value {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.empty-state {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--bs-secondary-color);
+}
+
+/* Bottom sheet (react-bootstrap Offcanvas placement="bottom"). */
+.offcanvas.sheet {
+  height: auto;
+  max-height: calc(92vh - var(--safe-top));
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+}
+.sheet .offcanvas-body {
+  padding-bottom: calc(16px + var(--safe-bottom));
+}
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  margin: 8px auto 0;
+  border-radius: 2px;
+  background: var(--bs-border-color);
+}
+.amount-input {
+  font-size: 2rem !important;
+  font-weight: 600;
+  text-align: center;
+  border: 0;
+  background: transparent;
+}
+.amount-input:focus {
+  box-shadow: none;
+  background: transparent;
+}
+
+.chart-box {
+  position: relative;
+  height: 240px;
+}
+
+/* Date inputs have an intrinsic min-width that overflows narrow flex rows. */
+input[type="date"] {
+  min-width: 0;
+}
+.flex-fill {
+  min-width: 0;
+}
+
+.app-main > .section-title:first-child {
+  margin-top: 4px;
+}
+
+.sheet .offcanvas-header {
+  padding-top: 8px;
+  padding-bottom: 0;
+}
