@@ -1,7 +1,7 @@
 import { IonItem, IonLabel, IonList } from "@ionic/react";
 import { useDataVersion } from "../api";
 import { AuditEntry, describeEntry, listAuditLog } from "../api/audit";
-import { formatDay } from "../format";
+import { formatDay, formatTime } from "../format";
 import { Page } from "./ui/Page";
 import { LoadMore, usePagedList } from "./ui/usePagedList";
 
@@ -19,7 +19,7 @@ function EntryRow({ e }: { e: AuditEntry }) {
       <div slot="end" className="log-time">
         {formatDay(e.at)}
         <br />
-        {e.at.slice(11, 16)}
+        {formatTime(e.at)}
       </div>
     </IonItem>
   );

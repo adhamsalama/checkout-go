@@ -30,6 +30,13 @@ export function formatDay(date: string | Date): string {
   });
 }
 
+/** 12-hour clock time, e.g. "3:05 PM". */
+export function formatTime(date: string | Date): string {
+  const d = typeof date === "string" ? parseDate(date) : date;
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
 /** Parses a user-typed amount; NaN if empty or invalid. */
 export function parseAmount(s: string): number {
   return s.trim() === "" ? NaN : Number(s.replace(",", "."));
