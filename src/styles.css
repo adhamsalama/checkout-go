@@ -345,3 +345,27 @@ ion-modal.sheet ion-content::part(scroll) {
 .tappable {
   cursor: pointer;
 }
+
+/* Inline autocomplete under a field. */
+.suggestions {
+  margin-top: 4px;
+  border: 1px solid var(--muted-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.suggestion {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: none;
+  color: var(--ion-text-color);
+  font: inherit;
+  text-align: start;
+}
+.suggestion + .suggestion {
+  border-top: 1px solid var(--muted-bg);
+}
+.suggestion:active {
+  background: var(--muted-bg);
+}

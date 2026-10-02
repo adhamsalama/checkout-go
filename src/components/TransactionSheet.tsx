@@ -15,6 +15,7 @@ import { useDialogs } from "./ui/dialogs";
 import { Sheet, useLastValue } from "./ui/Sheet";
 import { TagPicker, TagPickerHandle } from "./ui/TagPicker";
 import { AccountChips, useAccounts } from "./ui/accounts";
+import { SellerInput } from "./ui/SellerInput";
 
 export type SheetState = { kind: "expense" | "payment"; transaction?: Expense } | null;
 
@@ -146,13 +147,7 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
                 <div className="field-label">Tags</div>
                 <TagPicker ref={tagPicker} value={tags} onChange={setTags} />
               </div>
-              <IonInput
-                fill="outline"
-                label="Seller"
-                labelPlacement="floating"
-                value={seller}
-                onIonInput={(e) => setSeller(e.detail.value ?? "")}
-              />
+              <SellerInput value={seller} onChange={setSeller} />
             </>
           )}
           <IonTextarea
