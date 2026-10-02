@@ -34,29 +34,35 @@ export function TagPicker({ value, onChange }: { value: string[]; onChange: (tag
   const all = [...new Set([...(known ?? []), ...value])];
   const toggle = (tag: string) =>
     onChange(value.includes(tag) ? value.filter((t) => t !== tag) : [...value, tag]);
-  const addDraft = () => {
-    const tags = draft.split(",").map((t) => t.trim()).filter(Boolean);
+  // Takes the input's current text: ionInput state updates render at default priority, so `draft` can
+  // still be stale when Enter or blur arrives right after typing.
+  const addDraft = (text: string) => {
+    const tags = text.split(",").map((t) => t.trim()).filter(Boolean);
     if (tags.length) onChange([...new Set([...value, ...tags])]);
     setDraft("");
   };
   return (
     <>
       <TagChips tags={all} isSelected={(t) => value.includes(t)} onToggle={toggle} />
-      <IonInput
-        fill="outline"
-        label="New tag"
-        labelPlacement="floating"
-        value={draft}
-        enterkeyhint="done"
-        onIonInput={(e) => setDraft(e.detail.value ?? "")}
-        onIonBlur={addDraft}
+      {/* Enter adds the tag; preventDefault stops it from submitting the surrounding form. */}
+      <div
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            addDraft();
+            addDraft((e.target as HTMLInputElement).value);
           }
         }}
-      />
+      >
+        <IonInput
+          fill="outline"
+          label="New tag"
+          labelPlacement="floating"
+          value={draft}
+          enterkeyhint="done"
+          onIonInput={(e) => setDraft(e.detail.value ?? "")}
+          onIonBlur={(e) => addDraft(String(e.target.value ?? ""))}
+        />
+      </div>
     </>
   );
 }
