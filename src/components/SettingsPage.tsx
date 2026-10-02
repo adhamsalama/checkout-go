@@ -18,6 +18,7 @@ import { useDialogs } from "./ui/dialogs";
 function describe(c: ImportSummary) {
   return (
     `${c.accounts} ${c.accounts === 1 ? "account" : "accounts"}, ${c.transactions} transactions, ` +
+    (c.transfers > 0 ? `${c.transfers} ${c.transfers === 1 ? "transfer" : "transfers"}, ` : "") +
     `${c.monthlyBudgets} monthly budgets, ${c.taggedBudgets} tagged budgets`
   );
 }
@@ -85,10 +86,11 @@ export default function SettingsPage() {
     const incoming = {
       accounts: backup.accounts.length,
       transactions: backup.transactions.length,
+      transfers: backup.transfers.length,
       monthlyBudgets: backup.monthlyBudgets.length,
       taggedBudgets: backup.taggedBudgets.length,
     };
-    const hasData = current && current.transactions + current.monthlyBudgets + current.taggedBudgets > 0;
+    const hasData = current && current.transactions + current.transfers + current.monthlyBudgets + current.taggedBudgets > 0;
     const ok = await dialogs.confirm(
       "Import data?",
       `Import ${describe(incoming)}?` +
@@ -202,6 +204,18 @@ export default function SettingsPage() {
               </IonButton>
             </div>
           )}
+        </IonCardContent>
+      </IonCard>
+
+      <IonCard>
+        <IonCardHeader>
+          <IonCardTitle>Activity log</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <p>Every change to your data, with what it was before. Exports and imports include it.</p>
+          <IonButton fill="outline" routerLink="/settings/log">
+            View log
+          </IonButton>
         </IonCardContent>
       </IonCard>
     </Page>

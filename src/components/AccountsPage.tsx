@@ -1,7 +1,8 @@
 import { IonBadge, IonButton, IonInput, IonItem, IonLabel, IonList, IonToggle } from "@ionic/react";
 import { useCallback, useEffect, useState } from "react";
-import { notifyChanged } from "../api";
+import { notifyChanged, useDataVersion } from "../api";
 import { createAccount, deleteAccount, setDefaultAccount, updateAccount } from "../api/accounts";
+import { listTransfers } from "../api/transfers";
 import { formatMoney, parseAmount } from "../format";
 import { Account } from "../types";
 import { useAccounts } from "./ui/accounts";
@@ -9,6 +10,8 @@ import { useDialogs } from "./ui/dialogs";
 import { Fab } from "./ui/Fab";
 import { Page } from "./ui/Page";
 import { Sheet, useLastValue } from "./ui/Sheet";
+import { LoadMore, usePagedList } from "./ui/usePagedList";
+import { TransferRow, TransferSheet } from "./TransferSheet";
 
 type Editing = { account?: Account } | null;
 
@@ -135,9 +138,13 @@ function AccountSheet({ editing, onClose }: { editing: Editing; onClose: () => v
 
 export function AccountsPage() {
   const accounts = useAccounts();
+  const version = useDataVersion();
+  const transfers = usePagedList(listTransfers, version);
   const [editing, setEditing] = useState<Editing>(null);
+  const [transferring, setTransferring] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const onClose = useCallback(() => setEditing(null), []);
+  const closeTransfer = useCallback(() => setTransferring(false), []);
   const active = accounts?.filter((a) => !a.archived) ?? [];
   const archived = accounts?.filter((a) => a.archived) ?? [];
 
@@ -149,6 +156,11 @@ export function AccountsPage() {
           <AccountRow key={a.id} account={a} onClick={() => setEditing({ account: a })} />
         ))}
       </IonList>
+      {active.length > 1 && (
+        <IonButton expand="block" fill="outline" className="section-gap" onClick={() => setTransferring(true)}>
+          Transfer money
+        </IonButton>
+      )}
       {archived.length > 0 && (
         <>
           <IonButton fill="clear" className="ion-no-margin section-gap" onClick={() => setShowArchived((s) => !s)}>
@@ -163,7 +175,19 @@ export function AccountsPage() {
           )}
         </>
       )}
+      {transfers.items && transfers.items.length > 0 && (
+        <>
+          <div className="section-title">Transfers</div>
+          <IonList className="list">
+            {transfers.items.map((t) => (
+              <TransferRow key={t.id} t={t} />
+            ))}
+          </IonList>
+        </>
+      )}
+      <LoadMore list={transfers} />
       <AccountSheet editing={editing} onClose={onClose} />
+      <TransferSheet show={transferring} onClose={closeTransfer} />
     </Page>
   );
 }

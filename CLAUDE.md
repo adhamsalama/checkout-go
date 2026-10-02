@@ -38,7 +38,7 @@ remote uses the SSH host alias `github-personal`.
   `transactions.ts`, `accounts.ts` and `budgets.ts` hold the domain logic. `stats.ts` backs the Stats screen: every query
   takes a `StatsFilter` (inclusive day range, text search, required tags) and returns positive amounts spent. `backup.ts` handles JSON export/validate/restore,
   where restore replaces all data atomically and keeps ids. Version 1 files (no accounts) still import, into one
-  default `Main` account. `legacy.ts` opens an old Go backend `sqlite3.db`
+  default `Main` account; files before version 3 import with no transfers and an empty audit log. `legacy.ts` opens an old Go backend `sqlite3.db`
   in memory with sql.js and turns one user's rows into a `Backup`. `index.ts` has the `useAsync` hook that
   components use for loading data.
 - Components call `src/api/*` directly. There's no global state store. Tab pages stay mounted (`IonTabs`), so after
@@ -67,6 +67,15 @@ remote uses the SSH host alias `github-personal`.
   all transactions; stats and budgets ignore accounts. The account picker, row labels and search filter only
   appear with more than one account. `useAccounts()` (`components/ui/accounts.tsx`) shares one query per data
   version.
+- Transfers (`src/api/transfers.ts`, own table) move money between two active accounts. They change account
+  balances only, never stats, budgets or the total balance. They're append-only: undo one with
+  `reverseTransfer`, which adds the opposite transfer linked by `reversal_of` (once per transfer). Accounts with
+  transfers can't be deleted.
+- Every write logs to `audit_log` via `logChange` (`src/api/audit.ts`) inside the same `db.transaction`, with JSON
+  before/after snapshots. A new write function must do the same, and must read its snapshots through the
+  transaction's `tx` (getters take an optional `db`). Updates that change nothing aren't logged. Restore replaces
+  the log with the backup's and appends a `restore` entry. `describeEntry` turns entries into the text shown on
+  the Activity log screen (`/settings/log`).
 - `tags` is a JSON array string, queried with `json_each`. The Tags & sellers screen (`/expenses/labels`) renames
   tags (`src/api/tags.ts`, also on tag budgets) and sellers (`src/api/sellers.ts`) on every transaction; renaming
   to an existing name merges them.

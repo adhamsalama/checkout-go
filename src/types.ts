@@ -19,8 +19,25 @@ export type Account = {
   isDefault: boolean;
   archived: boolean;
   sortOrder: number;
-  /** Opening balance plus all of the account's transactions. */
+  /** Opening balance plus all of the account's transactions, plus transfers in, minus transfers out. */
   balance: number;
+};
+
+/** Money moved between two accounts. Transfers are never edited or deleted; a reversing transfer undoes one. */
+export type Transfer = {
+  id: number;
+  fromAccountId: number;
+  toAccountId: number;
+  fromName: string;
+  toName: string;
+  /** Always positive. */
+  amount: number;
+  date: string;
+  note: string;
+  /** The transfer this one undoes, if it's a reversal. */
+  reversalOf: number | null;
+  /** The transfer that undid this one, if any. */
+  reversedBy: number | null;
 };
 
 export type MonthlyBudget = {

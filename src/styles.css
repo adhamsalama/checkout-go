@@ -342,6 +342,12 @@ ion-modal.sheet ion-content::part(scroll) {
   color: var(--secondary-text);
   font-variant-numeric: tabular-nums;
 }
+.log-time {
+  font-size: 0.75rem;
+  text-align: end;
+  color: var(--secondary-text);
+  white-space: nowrap;
+}
 .tappable {
   cursor: pointer;
 }

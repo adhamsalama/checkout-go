@@ -1,8 +1,9 @@
 import { getDb } from "../db";
-import { SqlValue } from "../db/types";
+import { Db, SqlValue } from "../db/types";
 import { normalizeDate, toLocalIso } from "../dates";
 import { Expense, PeriodStats, TagStats } from "../types";
 import { getAccount, resolveAccountId } from "./accounts";
+import { AuditAction, logChange } from "./audit";
 
 type TransactionRow = {
   id: number;
@@ -80,16 +81,31 @@ function toTransaction(row: TransactionRow): Expense {
   };
 }
 
+/** Logs a change to a transaction, with its account's name so the entry still reads well later. */
+async function logTransaction(db: Db, action: AuditAction, before: Expense | null, after: Expense | null) {
+  const snapshot = async (t: Expense | null) => {
+    if (!t) return null;
+    const [account] = await db.query<{ name: string }>("SELECT name FROM accounts WHERE id = ?", [t.accountId]);
+    return { ...t, accountName: account?.name ?? "" };
+  };
+  const t = (after ?? before)!;
+  await logChange(db, t.price <= 0 ? "expense" : "payment", action, t.id, await snapshot(before), await snapshot(after));
+}
+
 async function insert(input: TransactionInput, price: number): Promise<Expense> {
-  const db = await getDb();
   const date = normalizeDate(input.date);
   const tags = cleanTags(input.tags);
   const accountId = await resolveAccountId(input.accountId);
-  const { lastId } = await db.run(
-    "INSERT INTO transactions (name, price, date, tags, seller, note, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [input.name, price, date, JSON.stringify(tags), input.sellerName ?? "", input.comment ?? "", accountId]
-  );
-  return (await getTransaction(lastId))!;
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const { lastId } = await tx.run(
+      "INSERT INTO transactions (name, price, date, tags, seller, note, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [input.name, price, date, JSON.stringify(tags), input.sellerName ?? "", input.comment ?? "", accountId]
+    );
+    const created = (await getTransaction(lastId, tx))!;
+    await logTransaction(tx, "create", null, created);
+    return created;
+  });
 }
 
 export async function createExpense(input: TransactionInput): Promise<Expense> {
@@ -119,13 +135,18 @@ async function update(id: number, patch: TransactionUpdate): Promise<Expense> {
   const columns = Object.keys(fields);
   if (columns.length === 0) throw new Error("No fields to update");
 
+  const before = await getTransaction(id);
+  if (!before) throw new Error("Transaction not found");
   const db = await getDb();
-  const { changes } = await db.run(
-    `UPDATE transactions SET ${columns.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`,
-    [...Object.values(fields), id]
-  );
-  if (changes === 0) throw new Error("Transaction not found");
-  return (await getTransaction(id))!;
+  return db.transaction(async (tx) => {
+    await tx.run(`UPDATE transactions SET ${columns.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`, [
+      ...Object.values(fields),
+      id,
+    ]);
+    const after = (await getTransaction(id, tx))!;
+    await logTransaction(tx, "update", before, after);
+    return after;
+  });
 }
 
 export async function updateExpense(id: number, patch: TransactionUpdate): Promise<Expense> {
@@ -144,13 +165,18 @@ export async function updatePayment(id: number, patch: TransactionUpdate): Promi
 
 export async function deleteTransaction(id: number): Promise<Expense | null> {
   const transaction = await getTransaction(id);
+  if (!transaction) return null;
   const db = await getDb();
-  await db.run("DELETE FROM transactions WHERE id = ?", [id]);
+  await db.transaction(async (tx) => {
+    await tx.run("DELETE FROM transactions WHERE id = ?", [id]);
+    await logTransaction(tx, "delete", transaction, null);
+  });
   return transaction;
 }
 
-export async function getTransaction(id: number): Promise<Expense | null> {
-  const db = await getDb();
+/** Pass `db` when reading inside a transaction. */
+export async function getTransaction(id: number, db?: Db): Promise<Expense | null> {
+  db ??= await getDb();
   const [row] = await db.query<TransactionRow>("SELECT * FROM transactions WHERE id = ?", [id]);
   return row ? toTransaction(row) : null;
 }

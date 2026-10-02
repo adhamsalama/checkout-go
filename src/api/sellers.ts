@@ -1,4 +1,5 @@
 import { getDb } from "../db";
+import { logChange } from "./audit";
 
 /** Every seller in use with how many transactions have it, most used first. */
 export async function listSellerCounts(): Promise<{ name: string; count: number }[]> {
@@ -15,6 +16,9 @@ export async function renameSeller(from: string, to: string): Promise<number> {
   if (!target) throw new Error("Enter a seller name");
   if (target === from) return 0;
   const db = await getDb();
-  const { changes } = await db.run("UPDATE transactions SET seller = ? WHERE seller = ?", [target, from]);
-  return changes;
+  return db.transaction(async (tx) => {
+    const { changes } = await tx.run("UPDATE transactions SET seller = ? WHERE seller = ?", [target, from]);
+    if (changes > 0) await logChange(tx, "seller", "rename", null, { name: from }, { name: target, transactions: changes });
+    return changes;
+  });
 }

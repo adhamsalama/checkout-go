@@ -1,4 +1,5 @@
 import { getDb } from "../db";
+import { logChange } from "./audit";
 import { cleanTags } from "./transactions";
 
 /** Every tag in use with how many transactions have it, most used first. */
@@ -28,7 +29,10 @@ export async function renameTag(from: string, to: string): Promise<number> {
       const tags = cleanTags(JSON.parse(row.tags) as string[]).map((t) => (t === from ? target : t));
       await tx.run("UPDATE transactions SET tags = ? WHERE id = ?", [JSON.stringify([...new Set(tags)]), row.id]);
     }
-    await tx.run("UPDATE tagged_budgets SET tag = ? WHERE tag = ?", [target, from]);
+    const { changes: budgets } = await tx.run("UPDATE tagged_budgets SET tag = ? WHERE tag = ?", [target, from]);
+    if (rows.length + budgets > 0) {
+      await logChange(tx, "tag", "rename", null, { name: from }, { name: target, transactions: rows.length, budgets });
+    }
     return rows.length;
   });
 }

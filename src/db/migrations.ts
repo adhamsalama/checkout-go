@@ -53,6 +53,33 @@ export const MIGRATIONS: ((db: Db) => Promise<void>)[] = [
     await db.run("UPDATE transactions SET account_id = 1");
     await db.run("CREATE INDEX transactions_account ON transactions (account_id, date)");
   },
+
+  // 3: transfers between accounts and the audit log. Both are append-only: the API never updates or
+  // deletes their rows (only a backup restore replaces them). A transfer is undone by a reversing one.
+  async (db) => {
+    await db.run(`CREATE TABLE transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_account_id INTEGER NOT NULL REFERENCES accounts (id),
+      to_account_id INTEGER NOT NULL REFERENCES accounts (id),
+      amount REAL NOT NULL CHECK (amount > 0),
+      date TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      reversal_of INTEGER UNIQUE REFERENCES transfers (id),
+      CHECK (from_account_id != to_account_id)
+    )`);
+    await db.run("CREATE INDEX transfers_from ON transfers (from_account_id)");
+    await db.run("CREATE INDEX transfers_to ON transfers (to_account_id)");
+    // before/after are JSON snapshots of the changed row (null for creates and deletes respectively).
+    await db.run(`CREATE TABLE audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      at TEXT NOT NULL,
+      entity TEXT NOT NULL,
+      action TEXT NOT NULL,
+      entity_id INTEGER,
+      before TEXT,
+      after TEXT
+    )`);
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.length;

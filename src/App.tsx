@@ -18,6 +18,7 @@ import Dashboard from "./components/Dashboard";
 import { ListExpenses } from "./components/ListExpenses";
 import { SearchPage } from "./components/SearchPage";
 import { AccountsPage } from "./components/AccountsPage";
+import { AuditLogPage } from "./components/AuditLogPage";
 import { LabelsPage } from "./components/LabelsPage";
 import PaymentPage from "./components/ListPayments";
 import BudgetsPage from "./components/BudgetsPage";
@@ -77,6 +78,7 @@ function Tabs() {
         <Route path="/budgets" element={<BudgetsPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/log" element={<AuditLogPage />} />
         <Route path="*" element={<Navigate to={HOME} replace />} />
       </IonRouterOutlet>
       <IonTabBar slot="bottom" id="tab-bar">
