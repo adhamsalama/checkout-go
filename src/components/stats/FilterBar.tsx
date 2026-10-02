@@ -1,4 +1,4 @@
-import { IonChip, IonIcon, IonSearchbar } from "@ionic/react";
+import { IonChip, IonIcon, IonLabel, IonSearchbar } from "@ionic/react";
 import { add, closeCircle } from "ionicons/icons";
 import { useState } from "react";
 import { useAsync, useDataVersion } from "../../api";
@@ -38,8 +38,9 @@ export function FilterBar({
           </IonChip>
         ))}
         <IonChip outline onClick={() => setPicking(true)}>
+          {/* A label, so the icon isn't also :last-child, whose Ionic margin pulls it onto the text. */}
           <IonIcon icon={add} />
-          Tag
+          <IonLabel>Tag</IonLabel>
         </IonChip>
       </div>
       <Sheet show={picking} onClose={() => setPicking(false)} title="Filter by tags">
