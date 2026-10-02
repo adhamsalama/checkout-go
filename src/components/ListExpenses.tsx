@@ -1,5 +1,5 @@
 import { IonButton, IonIcon, IonList, IonProgressBar, useIonRouter } from "@ionic/react";
-import { search, walletOutline } from "ionicons/icons";
+import { pricetagsOutline, search, walletOutline } from "ionicons/icons";
 import { useCallback, useState } from "react";
 import { useAsync, useDataVersion } from "../api";
 import { getMonthlyBudget } from "../api/budgets";
@@ -77,6 +77,9 @@ export function ListExpenses() {
         <>
           <IonButton aria-label="Accounts" routerLink="/expenses/accounts">
             <IonIcon slot="icon-only" icon={walletOutline} />
+          </IonButton>
+          <IonButton aria-label="Tags and sellers" routerLink="/expenses/labels">
+            <IonIcon slot="icon-only" icon={pricetagsOutline} />
           </IonButton>
           <IonButton aria-label="Search" routerLink="/expenses/search">
             <IonIcon slot="icon-only" icon={search} />

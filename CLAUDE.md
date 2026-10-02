@@ -67,7 +67,9 @@ remote uses the SSH host alias `github-personal`.
   all transactions; stats and budgets ignore accounts. The account picker, row labels and search filter only
   appear with more than one account. `useAccounts()` (`components/ui/accounts.tsx`) shares one query per data
   version.
-- `tags` is a JSON array string, queried with `json_each`.
+- `tags` is a JSON array string, queried with `json_each`. The Tags & sellers screen (`/expenses/labels`) renames
+  tags (`src/api/tags.ts`, also on tag budgets) and sellers (`src/api/sellers.ts`) on every transaction; renaming
+  to an existing name merges them.
 - Dates are stored as **local wall-clock `YYYY-MM-DDTHH:MM:SS` with no zone** (`src/dates.ts`). All month/day
   grouping uses `strftime` on that string. "Current month" is computed in JS and passed as a parameter, so never use
   `date('now')` in SQL. `parseDate` deliberately drops timezone suffixes, because legacy rows were mostly
