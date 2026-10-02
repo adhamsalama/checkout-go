@@ -50,7 +50,7 @@ describe("legacy import", () => {
     ]);
     const summary = await restoreBackup(legacy.toBackup(1));
     legacy.close();
-    expect(summary).toEqual({ transactions: 4, monthlyBudgets: 1, taggedBudgets: 1 });
+    expect(summary).toEqual({ accounts: 1, transactions: 4, monthlyBudgets: 1, taggedBudgets: 1 });
 
     expect(await tx.getTransaction(3)).toMatchObject({ date: "2023-11-30T22:15:00", tags: [], sellerName: "" });
     expect(await tx.getTransaction(7)).toMatchObject({
@@ -86,7 +86,7 @@ describe("backup", () => {
     setDb(createNodeDb());
     await tx.createExpense({ name: "will be replaced", price: 1 });
     await restoreBackup(parseBackup(backup));
-    expect(await counts()).toEqual({ transactions: 1, monthlyBudgets: 1, taggedBudgets: 1 });
+    expect(await counts()).toEqual({ accounts: 1, transactions: 1, monthlyBudgets: 1, taggedBudgets: 1 });
     expect((await tx.listExpenses())[0]).toMatchObject({ name: "a", tags: ["t"] });
   });
 

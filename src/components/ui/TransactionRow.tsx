@@ -1,6 +1,7 @@
 import { IonItem, IonLabel } from "@ionic/react";
 import { Expense } from "../../types";
 import { formatDay, formatMoney } from "../../format";
+import { useAccounts } from "./accounts";
 
 /** A list row for an expense or payment; render inside an IonList. */
 export function TransactionRow({
@@ -12,7 +13,10 @@ export function TransactionRow({
   onClick: () => void;
   showDate?: boolean;
 }) {
-  const details = [showDate && formatDay(t.date), t.sellerName, t.comment].filter(Boolean).join(" · ");
+  const accounts = useAccounts();
+  // Only worth showing once there's more than one account.
+  const account = accounts && accounts.length > 1 ? accounts.find((a) => a.id === t.accountId)?.name : undefined;
+  const details = [showDate && formatDay(t.date), account, t.sellerName, t.comment].filter(Boolean).join(" · ");
   return (
     <IonItem button detail={false} onClick={onClick}>
       <IonLabel>

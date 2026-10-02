@@ -1,10 +1,11 @@
-import { IonButton, IonIcon, IonList, IonProgressBar } from "@ionic/react";
-import { search } from "ionicons/icons";
+import { IonButton, IonIcon, IonList, IonProgressBar, useIonRouter } from "@ionic/react";
+import { search, walletOutline } from "ionicons/icons";
 import { useCallback, useState } from "react";
 import { useAsync, useDataVersion } from "../api";
 import { getMonthlyBudget } from "../api/budgets";
 import { getBalance, getCurrentMonthExpensesSum, listExpenses } from "../api/transactions";
 import { formatDay, formatMoney } from "../format";
+import { useAccounts } from "./ui/accounts";
 import { Fab } from "./ui/Fab";
 import { Page } from "./ui/Page";
 import { groupByDay, TransactionRow } from "./ui/TransactionRow";
@@ -21,14 +22,23 @@ function Summary({ version }: { version: number }) {
   const { data: balance } = useAsync(getBalance, [version]);
   const { data: spent } = useAsync(() => getCurrentMonthExpensesSum(), [version]);
   const { data: budget } = useAsync(getMonthlyBudget, [version]);
+  const accounts = useAccounts()?.filter((a) => !a.archived);
+  const router = useIonRouter();
   const spentAbs = -(spent ?? 0);
   const remaining = budget ? budget.value - spentAbs : 0;
   const percentLeft = budget ? (remaining / budget.value) * 100 : 0;
 
   return (
     <div className="surface ion-padding">
-      <div className="stat-label">Balance</div>
-      <div className="balance-value">{balance === null ? "…" : formatMoney(balance)}</div>
+      <div className="tappable" role="button" onClick={() => router.push("/expenses/accounts")}>
+        <div className="stat-label">Balance</div>
+        <div className="balance-value">{balance === null ? "…" : formatMoney(balance)}</div>
+        {accounts && accounts.length > 1 && (
+          <div className="account-balances">
+            {accounts.map((a) => `${a.name} ${formatMoney(a.balance)}`).join(" · ")}
+          </div>
+        )}
+      </div>
       <div className="stat-row">
         <div>
           <div className="stat-label">Spent this month</div>
@@ -64,9 +74,14 @@ export function ListExpenses() {
     <Page
       title="Expenses"
       actions={
-        <IonButton aria-label="Search" routerLink="/expenses/search">
-          <IonIcon slot="icon-only" icon={search} />
-        </IonButton>
+        <>
+          <IonButton aria-label="Accounts" routerLink="/expenses/accounts">
+            <IonIcon slot="icon-only" icon={walletOutline} />
+          </IonButton>
+          <IonButton aria-label="Search" routerLink="/expenses/search">
+            <IonIcon slot="icon-only" icon={search} />
+          </IonButton>
+        </>
       }
       fab={<Fab label="Add expense" onClick={() => setSheet({ kind: "expense" })} />}
     >

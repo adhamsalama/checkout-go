@@ -2,6 +2,7 @@ import { getDb } from "../db";
 import { SqlValue } from "../db/types";
 import { normalizeDate, toLocalIso } from "../dates";
 import { Expense, PeriodStats, TagStats } from "../types";
+import { getAccount, resolveAccountId } from "./accounts";
 
 type TransactionRow = {
   id: number;
@@ -11,6 +12,7 @@ type TransactionRow = {
   tags: string | null;
   seller: string | null;
   note: string | null;
+  account_id: number;
 };
 
 export type TransactionInput = {
@@ -21,9 +23,12 @@ export type TransactionInput = {
   comment?: string;
   tags?: string[];
   date?: string | Date;
+  /** Defaults to the default account. */
+  accountId?: number;
 };
 
 export type TransactionUpdate = Partial<{
+  accountId: number;
   name: string;
   price: number;
   sellerName: string;
@@ -39,6 +44,8 @@ export type ExpenseFilters = {
   maxAmount?: number;
   /** Matches expenses that have any of these tags. */
   tags?: string[];
+  /** Matches expenses in any of these accounts. */
+  accountIds?: number[];
   /** Inclusive local calendar days. */
   startDate?: Date;
   endDate?: Date;
@@ -69,6 +76,7 @@ function toTransaction(row: TransactionRow): Expense {
     tags: parseTags(row.tags),
     sellerName: row.seller ?? "",
     comment: row.note ?? "",
+    accountId: row.account_id,
   };
 }
 
@@ -76,9 +84,10 @@ async function insert(input: TransactionInput, price: number): Promise<Expense> 
   const db = await getDb();
   const date = normalizeDate(input.date);
   const tags = cleanTags(input.tags);
+  const accountId = await resolveAccountId(input.accountId);
   const { lastId } = await db.run(
-    "INSERT INTO transactions (name, price, date, tags, seller, note) VALUES (?, ?, ?, ?, ?, ?)",
-    [input.name, price, date, JSON.stringify(tags), input.sellerName ?? "", input.comment ?? ""]
+    "INSERT INTO transactions (name, price, date, tags, seller, note, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [input.name, price, date, JSON.stringify(tags), input.sellerName ?? "", input.comment ?? "", accountId]
   );
   return (await getTransaction(lastId))!;
 }
@@ -100,6 +109,13 @@ async function update(id: number, patch: TransactionUpdate): Promise<Expense> {
   if (patch.comment !== undefined) fields.note = patch.comment;
   if (patch.tags !== undefined) fields.tags = JSON.stringify(cleanTags(patch.tags));
   if (patch.date !== undefined) fields.date = normalizeDate(patch.date);
+  if (patch.accountId !== undefined) {
+    // Staying in an archived account is fine; moving into one isn't.
+    const current = await getTransaction(id);
+    if (current && current.accountId !== patch.accountId) await resolveAccountId(patch.accountId);
+    else if (!(await getAccount(patch.accountId))) throw new Error("Account not found");
+    fields.account_id = patch.accountId;
+  }
   const columns = Object.keys(fields);
   if (columns.length === 0) throw new Error("No fields to update");
 
@@ -161,6 +177,7 @@ export async function listExpenses(filters: ExpenseFilters = {}): Promise<Expens
     );
     params.push(...tags);
   }
+  where.push(...accountWhere(filters.accountIds, params));
   if (filters.startDate) {
     const start = new Date(filters.startDate);
     start.setHours(0, 0, 0, 0);
@@ -177,8 +194,19 @@ export async function listExpenses(filters: ExpenseFilters = {}): Promise<Expens
   return listWhere(where, params, filters.limit, filters.offset);
 }
 
-export function listPayments(opts: { limit?: number; offset?: number } = {}): Promise<Expense[]> {
-  return listWhere(["price > 0"], [], opts.limit, opts.offset);
+export function listPayments(
+  opts: { limit?: number; offset?: number; accountIds?: number[] } = {}
+): Promise<Expense[]> {
+  const params: SqlValue[] = [];
+  const where = ["price > 0", ...accountWhere(opts.accountIds, params)];
+  return listWhere(where, params, opts.limit, opts.offset);
+}
+
+/** A clause matching any of `ids` (none if empty or undefined); pushes its params. */
+function accountWhere(ids: number[] | undefined, params: SqlValue[]): string[] {
+  if (!ids?.length) return [];
+  params.push(...ids);
+  return [`account_id IN (${ids.map(() => "?").join(", ")})`];
 }
 
 /** Transactions matching all `where` clauses, newest first unless `orderBy` says otherwise. */
@@ -197,10 +225,12 @@ export async function listWhere(
   return rows.map(toTransaction);
 }
 
+/** Total across all accounts (archived ones too): opening balances plus every transaction. */
 export async function getBalance(): Promise<number> {
   const db = await getDb();
   const [row] = await db.query<{ balance: number }>(
-    "SELECT COALESCE(SUM(price), 0) AS balance FROM transactions"
+    `SELECT (SELECT COALESCE(SUM(opening_balance), 0) FROM accounts)
+          + (SELECT COALESCE(SUM(price), 0) FROM transactions) AS balance`
   );
   return row?.balance ?? 0;
 }

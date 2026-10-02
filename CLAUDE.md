@@ -29,14 +29,16 @@ remote uses the SSH host alias `github-personal`.
 ## Architecture
 
 - `src/db/`: `Db` interface (`query`, `run`, `transaction`). `capacitor.ts` implements it with the SQLite plugin.
-  On web it mounts the `jeep-sqlite` element and calls `saveToStore` after writes. `schema.ts` holds the
-  `CREATE TABLE IF NOT EXISTS` statements, which run on open. There is no migration system yet, so schema
-  changes need explicit migration code. `getDb()` is a lazy singleton. Tests swap it with `setDb(createNodeDb())`
-  from `src/test/nodeDb.ts`.
+  On web it mounts the `jeep-sqlite` element and calls `saveToStore` after writes. `migrations.ts` holds an
+  append-only list of migrations, run on open, each in a transaction with its version bump. The version is kept in
+  a `schema_version` table, not `PRAGMA user_version`, which the plugin and jeep-sqlite use themselves. Never edit
+  a shipped migration. `getDb()` is a lazy singleton. Tests swap it with `setDb(createNodeDb())` from
+  `src/test/nodeDb.ts` (`createRawNodeDb()` for an unmigrated one).
 - `src/api/`: the former Go services, ported to plain async functions with hand-written SQL.
-  `transactions.ts` and `budgets.ts` hold the domain logic. `stats.ts` backs the Stats screen: every query
+  `transactions.ts`, `accounts.ts` and `budgets.ts` hold the domain logic. `stats.ts` backs the Stats screen: every query
   takes a `StatsFilter` (inclusive day range, text search, required tags) and returns positive amounts spent. `backup.ts` handles JSON export/validate/restore,
-  where restore replaces all data atomically and keeps ids. `legacy.ts` opens an old Go backend `sqlite3.db`
+  where restore replaces all data atomically and keeps ids. Version 1 files (no accounts) still import, into one
+  default `Main` account. `legacy.ts` opens an old Go backend `sqlite3.db`
   in memory with sql.js and turns one user's rows into a `Backup`. `index.ts` has the `useAsync` hook that
   components use for loading data.
 - Components call `src/api/*` directly. There's no global state store. Tab pages stay mounted (`IonTabs`), so after
@@ -59,6 +61,12 @@ remote uses the SSH host alias `github-personal`.
 
 - Expenses and payments share the `transactions` table. **Expenses have a negative `price`, payments a positive one.**
   `createExpense` negates the positive amount you pass, and the UI shows stored values.
+- Every transaction has an `account_id`. Exactly one account is the default (`is_default`, enforced by a partial
+  unique index and the API); `createExpense`/`createPayment` use it when no `accountId` is passed. The default and
+  accounts with transactions can't be deleted, and the default can't be archived. Balance is opening balances plus
+  all transactions; stats and budgets ignore accounts. The account picker, row labels and search filter only
+  appear with more than one account. `useAccounts()` (`components/ui/accounts.tsx`) shares one query per data
+  version.
 - `tags` is a JSON array string, queried with `json_each`.
 - Dates are stored as **local wall-clock `YYYY-MM-DDTHH:MM:SS` with no zone** (`src/dates.ts`). All month/day
   grouping uses `strftime` on that string. "Current month" is computed in JS and passed as a parameter, so never use

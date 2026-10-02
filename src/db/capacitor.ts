@@ -5,7 +5,7 @@ import {
   SQLiteDBConnection,
 } from "@capacitor-community/sqlite";
 import { Db, SqlValue } from "./types";
-import { SCHEMA } from "./schema";
+import { migrate } from "./migrations";
 
 const DB_NAME = "checkout";
 const isWeb = Capacitor.getPlatform() === "web";
@@ -60,9 +60,9 @@ export async function openCapacitorDb(): Promise<Db> {
       ? await sqlite.retrieveConnection(DB_NAME, false)
       : await sqlite.createConnection(DB_NAME, false, "no-encryption", 1, false);
   await conn.open();
-  for (const statement of SCHEMA) await conn.execute(statement);
 
   const persist = isWeb ? () => sqlite.saveToStore(DB_NAME) : async () => {};
-  await persist();
-  return wrap(conn, false, persist);
+  const db = wrap(conn, false, persist);
+  await migrate(db);
+  return db;
 }

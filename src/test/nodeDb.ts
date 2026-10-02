@@ -1,11 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { Db, SqlValue } from "../db/types";
-import { SCHEMA } from "../db/schema";
+import { migrate } from "../db/migrations";
 
-/** A Db backed by node:sqlite, for running the API layer in tests. */
-export function createNodeDb(): Db {
+/** An empty, unmigrated in-memory Db backed by node:sqlite. */
+export function createRawNodeDb(): Db {
   const sqlite = new DatabaseSync(":memory:");
-  for (const statement of SCHEMA) sqlite.exec(statement);
   const db: Db = {
     async query<T>(sql: string, params: SqlValue[] = []) {
       return sqlite.prepare(sql).all(...params) as T[];
@@ -26,5 +25,12 @@ export function createNodeDb(): Db {
       }
     },
   };
+  return db;
+}
+
+/** A migrated in-memory Db, for running the API layer in tests. */
+export async function createNodeDb(): Promise<Db> {
+  const db = createRawNodeDb();
+  await migrate(db);
   return db;
 }

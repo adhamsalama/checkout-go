@@ -8,6 +8,19 @@ export type Expense = {
   comment?: string;
   date: string;
   sellerName?: string;
+  accountId: number;
+};
+
+/** Where money is kept, e.g. "Bank" or "Cash". Exactly one account is the default. */
+export type Account = {
+  id: number;
+  name: string;
+  openingBalance: number;
+  isDefault: boolean;
+  archived: boolean;
+  sortOrder: number;
+  /** Opening balance plus all of the account's transactions. */
+  balance: number;
 };
 
 export type MonthlyBudget = {

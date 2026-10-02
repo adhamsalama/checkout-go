@@ -14,6 +14,7 @@ import { Expense } from "../types";
 import { useDialogs } from "./ui/dialogs";
 import { Sheet, useLastValue } from "./ui/Sheet";
 import { TagPicker, TagPickerHandle } from "./ui/TagPicker";
+import { AccountChips, useAccounts } from "./ui/accounts";
 
 export type SheetState = { kind: "expense" | "payment"; transaction?: Expense } | null;
 
@@ -25,10 +26,13 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
   const [tags, setTags] = useState<string[]>([]);
   const [seller, setSeller] = useState("");
   const [note, setNote] = useState("");
+  const [accountId, setAccountId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const amountInput = useRef<HTMLIonInputElement>(null);
   const tagPicker = useRef<TagPickerHandle>(null);
   const dialogs = useDialogs();
+  const accounts = useAccounts();
+  const defaultId = accounts?.find((a) => a.isDefault)?.id ?? null;
 
   const shown = useLastValue(state);
   const editing = shown?.transaction;
@@ -43,7 +47,13 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
     setTags(t?.tags ?? []);
     setSeller(t?.sellerName ?? "");
     setNote(t?.comment ?? "");
+    setAccountId(t?.accountId ?? null);
   }, [state]);
+
+  // A new transaction goes to the default account until another one is picked.
+  const selectedAccount = accountId ?? (editing ? null : defaultId);
+  // Active accounts, plus the transaction's own account if it was archived since.
+  const pickable = accounts?.filter((a) => !a.archived || a.id === editing?.accountId) ?? [];
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +67,7 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
       comment: note.trim(),
       tags: isExpense ? (tagPicker.current?.pendingValue() ?? tags) : tags,
       date: keepDate ? editing.date : date || undefined,
+      accountId: selectedAccount ?? undefined,
     };
     setSaving(true);
     try {
@@ -123,6 +134,12 @@ export function TransactionSheet({ state, onClose }: { state: SheetState; onClos
             value={date}
             onIonInput={(e) => setDate(e.detail.value ?? "")}
           />
+          {pickable.length > 1 && (
+            <div>
+              <div className="field-label">Account</div>
+              <AccountChips accounts={pickable} isSelected={(id) => id === selectedAccount} onToggle={setAccountId} />
+            </div>
+          )}
           {isExpense && (
             <>
               <div>

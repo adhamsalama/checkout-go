@@ -329,3 +329,19 @@ ion-modal.sheet ion-content::part(scroll) {
   margin-top: 8px;
   text-align: center;
 }
+
+.default-badge {
+  margin-left: 8px;
+  vertical-align: middle;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.account-balances {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--secondary-text);
+  font-variant-numeric: tabular-nums;
+}
+.tappable {
+  cursor: pointer;
+}

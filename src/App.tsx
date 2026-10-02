@@ -17,6 +17,7 @@ import { Navigate, Route } from "react-router-dom";
 import Dashboard from "./components/Dashboard";
 import { ListExpenses } from "./components/ListExpenses";
 import { SearchPage } from "./components/SearchPage";
+import { AccountsPage } from "./components/AccountsPage";
 import PaymentPage from "./components/ListPayments";
 import BudgetsPage from "./components/BudgetsPage";
 import SettingsPage from "./components/SettingsPage";
@@ -69,6 +70,7 @@ function Tabs() {
       <IonRouterOutlet>
         <Route path={HOME} element={<ListExpenses />} />
         <Route path={`${HOME}/search`} element={<SearchPage />} />
+        <Route path={`${HOME}/accounts`} element={<AccountsPage />} />
         <Route path="/payments" element={<PaymentPage />} />
         <Route path="/budgets" element={<BudgetsPage />} />
         <Route path="/dashboard" element={<Dashboard />} />

@@ -16,7 +16,10 @@ import { LegacyDatabase, openLegacyDatabase } from "../api/legacy";
 import { useDialogs } from "./ui/dialogs";
 
 function describe(c: ImportSummary) {
-  return `${c.transactions} transactions, ${c.monthlyBudgets} monthly budgets, ${c.taggedBudgets} tagged budgets`;
+  return (
+    `${c.accounts} ${c.accounts === 1 ? "account" : "accounts"}, ${c.transactions} transactions, ` +
+    `${c.monthlyBudgets} monthly budgets, ${c.taggedBudgets} tagged budgets`
+  );
 }
 
 async function saveBackupFile(backup: Backup) {
@@ -80,6 +83,7 @@ export default function SettingsPage() {
 
   const restore = async (backup: Backup) => {
     const incoming = {
+      accounts: backup.accounts.length,
       transactions: backup.transactions.length,
       monthlyBudgets: backup.monthlyBudgets.length,
       taggedBudgets: backup.taggedBudgets.length,

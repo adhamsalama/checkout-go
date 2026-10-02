@@ -1,5 +1,5 @@
 import type { Database } from "sql.js";
-import { Backup, BACKUP_VERSION, parseBackup } from "./backup";
+import { Backup, parseBackup } from "./backup";
 
 /** Users present in a legacy Go backend database, with how many transactions each has. */
 export type LegacyUser = { userId: number; username: string | null; transactions: number };
@@ -88,7 +88,8 @@ export async function openLegacyDatabase(
         tables.has(table) ? all(`SELECT * FROM ${table} WHERE user_id = ? ORDER BY id`, [userId]) : [];
       return parseBackup({
         app: "checkout",
-        version: BACKUP_VERSION,
+        // The old server had no accounts; parsing a version 1 backup puts everything in "Main".
+        version: 1,
         exportedAt: "",
         transactions: byUser("transactions"),
         monthlyBudgets: byUser("monthly_budgets"),

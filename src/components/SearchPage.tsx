@@ -6,13 +6,22 @@ import { parseDate } from "../dates";
 import { parseAmount } from "../format";
 import { Page } from "./ui/Page";
 import { TagPicker } from "./ui/TagPicker";
+import { AccountChips, useAccounts } from "./ui/accounts";
 import { TransactionRow } from "./ui/TransactionRow";
 import { useDebounced } from "./ui/useDebounced";
 import { LoadMore, usePagedList } from "./ui/usePagedList";
 import { SheetState, TransactionSheet } from "./TransactionSheet";
 
-type Draft = { name: string; min: string; max: string; tags: string[]; from: string; to: string };
-const EMPTY: Draft = { name: "", min: "", max: "", tags: [], from: "", to: "" };
+type Draft = {
+  name: string;
+  min: string;
+  max: string;
+  tags: string[];
+  accountIds: number[];
+  from: string;
+  to: string;
+};
+const EMPTY: Draft = { name: "", min: "", max: "", tags: [], accountIds: [], from: "", to: "" };
 
 function toFilters(d: Draft): ExpenseFilters {
   const min = parseAmount(d.min);
@@ -22,6 +31,7 @@ function toFilters(d: Draft): ExpenseFilters {
     minAmount: isNaN(min) ? undefined : min,
     maxAmount: isNaN(max) ? undefined : max,
     tags: d.tags.length ? d.tags : undefined,
+    accountIds: d.accountIds.length ? d.accountIds : undefined,
     startDate: d.from ? parseDate(d.from) : undefined,
     endDate: d.to ? parseDate(d.to) : undefined,
   };
@@ -32,6 +42,9 @@ export function SearchPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [sheet, setSheet] = useState<SheetState>(null);
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const accounts = useAccounts();
+  const toggleAccount = (id: number) =>
+    set({ accountIds: draft.accountIds.includes(id) ? draft.accountIds.filter((a) => a !== id) : [...draft.accountIds, id] });
 
   const debounced = useDebounced(draft, 250);
   const key = JSON.stringify(debounced);
@@ -95,6 +108,16 @@ export function SearchPage() {
           <div className="field-label">Any of these tags</div>
           <TagPicker value={draft.tags} onChange={(tags) => set({ tags })} />
         </div>
+        {accounts && accounts.length > 1 && (
+          <div>
+            <div className="field-label">Any of these accounts</div>
+            <AccountChips
+              accounts={accounts}
+              isSelected={(id) => draft.accountIds.includes(id)}
+              onToggle={toggleAccount}
+            />
+          </div>
+        )}
         {!isEmpty && (
           <IonButton fill="clear" className="ion-no-margin align-start" onClick={() => setDraft(EMPTY)}>
             Clear filters

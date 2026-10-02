@@ -11,7 +11,7 @@ export function getDb(): Promise<Db> {
 }
 
 /** Used by tests to swap in a node:sqlite-backed Db. */
-export function setDb(db: Db) {
+export function setDb(db: Db | Promise<Db>) {
   dbPromise = Promise.resolve(db);
 }
 
