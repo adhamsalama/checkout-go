@@ -1,13 +1,13 @@
+import { IonButton, IonInput, IonList, IonSearchbar } from "@ionic/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
+import { useDataVersion } from "../api";
 import { listExpenses, ExpenseFilters } from "../api/transactions";
 import { parseDate } from "../dates";
 import { parseAmount } from "../format";
 import { Page } from "./ui/Page";
 import { TagPicker } from "./ui/TagPicker";
 import { TransactionRow } from "./ui/TransactionRow";
-import { usePagedList } from "./ui/usePagedList";
+import { LoadMore, usePagedList } from "./ui/usePagedList";
 import { SheetState, TransactionSheet } from "./TransactionSheet";
 
 type Draft = { name: string; min: string; max: string; tags: string[]; from: string; to: string };
@@ -36,6 +36,7 @@ function toFilters(d: Draft): ExpenseFilters {
 }
 
 export function SearchPage() {
+  const version = useDataVersion();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [sheet, setSheet] = useState<SheetState>(null);
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
@@ -48,60 +49,71 @@ export function SearchPage() {
     (page: { limit: number; offset: number }) => listExpenses({ ...filters, ...page }),
     [filters]
   );
-  const { items, done, sentinel, reset } = usePagedList(fetchPage, key);
+  const list = usePagedList(fetchPage, `${key}:${version}`);
+  const { items } = list;
   const closeSheet = useCallback(() => setSheet(null), []);
 
   return (
-    <Page title="Search" back>
-      <div className="surface p-3">
-        <Form.Control
-          type="search"
+    <Page title="Search" back="/expenses">
+      <div className="surface ion-padding form-fields">
+        <IonSearchbar
+          className="ion-no-padding"
           placeholder="Search by name"
-          enterKeyHint="search"
+          enterkeyhint="search"
           value={draft.name}
-          onChange={(e) => set({ name: e.target.value })}
+          onIonInput={(e) => set({ name: e.detail.value ?? "" })}
         />
-        <div className="d-flex gap-2 mt-2">
-          <Form.Control
-            aria-label="Minimum amount"
-            placeholder="Min amount"
-            inputMode="decimal"
+        <div className="field-row">
+          <IonInput
+            fill="outline"
+            label="Min amount"
+            labelPlacement="floating"
+            inputmode="decimal"
             value={draft.min}
-            onChange={(e) => set({ min: e.target.value })}
+            onIonInput={(e) => set({ min: e.detail.value ?? "" })}
           />
-          <Form.Control
-            aria-label="Maximum amount"
-            placeholder="Max amount"
-            inputMode="decimal"
+          <IonInput
+            fill="outline"
+            label="Max amount"
+            labelPlacement="floating"
+            inputmode="decimal"
             value={draft.max}
-            onChange={(e) => set({ max: e.target.value })}
+            onIonInput={(e) => set({ max: e.detail.value ?? "" })}
           />
         </div>
-        <div className="d-flex gap-2 mt-2">
-          <Form.Group className="flex-fill">
-            <Form.Label className="stat-label mb-1">From</Form.Label>
-            <Form.Control type="date" value={draft.from} onChange={(e) => set({ from: e.target.value })} />
-          </Form.Group>
-          <Form.Group className="flex-fill">
-            <Form.Label className="stat-label mb-1">To</Form.Label>
-            <Form.Control type="date" value={draft.to} onChange={(e) => set({ to: e.target.value })} />
-          </Form.Group>
+        <div className="field-row">
+          <IonInput
+            fill="outline"
+            label="From"
+            labelPlacement="stacked"
+            type="date"
+            value={draft.from}
+            onIonInput={(e) => set({ from: e.detail.value ?? "" })}
+          />
+          <IonInput
+            fill="outline"
+            label="To"
+            labelPlacement="stacked"
+            type="date"
+            value={draft.to}
+            onIonInput={(e) => set({ to: e.detail.value ?? "" })}
+          />
         </div>
-        <div className="mt-2">
-          <div className="stat-label mb-1">Any of these tags</div>
+        <div>
+          <div className="field-label">Any of these tags</div>
           <TagPicker value={draft.tags} onChange={(tags) => set({ tags })} />
         </div>
         {!isEmpty && (
-          <Button variant="link" className="px-0 mt-1" onClick={() => setDraft(EMPTY)}>
+          <IonButton fill="clear" className="ion-no-margin align-start" onClick={() => setDraft(EMPTY)}>
             Clear filters
-          </Button>
+          </IonButton>
         )}
       </div>
 
       <div className="section-title">{isEmpty ? "All expenses" : "Results"}</div>
       {items?.length === 0 && <div className="empty-state">No matching expenses.</div>}
       {items && items.length > 0 && (
-        <div className="list">
+        <IonList className="list">
           {items.map((t) => (
             <TransactionRow
               key={t.id}
@@ -110,10 +122,10 @@ export function SearchPage() {
               onClick={() => setSheet({ kind: "expense", transaction: t })}
             />
           ))}
-        </div>
+        </IonList>
       )}
-      {!done && <div ref={sentinel} className="empty-state">Loading…</div>}
-      <TransactionSheet state={sheet} onClose={closeSheet} onSaved={reset} />
+      <LoadMore list={list} />
+      <TransactionSheet state={sheet} onClose={closeSheet} />
     </Page>
   );
 }

@@ -1,7 +1,8 @@
+import { IonItem, IonLabel } from "@ionic/react";
 import { Expense } from "../../types";
 import { formatDay, formatMoney } from "../../format";
 
-/** A list row for an expense or payment. */
+/** A list row for an expense or payment; render inside an IonList. */
 export function TransactionRow({
   t,
   onClick,
@@ -13,24 +14,24 @@ export function TransactionRow({
 }) {
   const details = [showDate && formatDay(t.date), t.sellerName, t.comment].filter(Boolean).join(" · ");
   return (
-    <button className="row-item" onClick={onClick}>
-      <div className="row-main">
-        <div className="row-title">{t.name || "Untitled"}</div>
-        {details && <div className="row-sub">{details}</div>}
+    <IonItem button detail={false} onClick={onClick}>
+      <IonLabel>
+        <h2 className="row-title">{t.name || "Untitled"}</h2>
+        {details && <p>{details}</p>}
         {t.tags.length > 0 && (
-          <div className="mt-1">
+          <div className="row-tags">
             {t.tags.map((tag) => (
-              <span key={tag} className="chip">
+              <span key={tag} className="tag">
                 {tag}
               </span>
             ))}
           </div>
         )}
-      </div>
-      <div className={`amount ${t.price < 0 ? "expense" : "income"}`}>
+      </IonLabel>
+      <div slot="end" className={`amount ${t.price < 0 ? "expense" : "income"}`}>
         {t.price < 0 ? formatMoney(t.price) : `+${formatMoney(t.price)}`}
       </div>
-    </button>
+    </IonItem>
   );
 }
 

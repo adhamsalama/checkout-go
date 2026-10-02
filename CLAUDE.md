@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Offline, single-user personal finance app (expenses, payments, budgets): React 18 + Vite + react-bootstrap + Chart.js,
+Offline, single-user personal finance app (expenses, payments, budgets): React 18 + Vite + Ionic React 9 + Chart.js,
 packaged as an Android app with Capacitor 8. All data lives in on-device SQLite via `@capacitor-community/sqlite`;
 there is no backend or auth. This repo used to be a Go/chi + SQLite server (see git history before the
 `capacitor-app` branch). The UI came from `../checkout-nest/frontend`.
@@ -38,13 +38,21 @@ remote uses the SSH host alias `github-personal`.
   where restore replaces all data atomically and keeps ids. `legacy.ts` opens an old Go backend `sqlite3.db`
   in memory with sql.js and turns one user's rows into a `Backup`. `index.ts` has the `useAsync` hook that
   components use for loading data.
-- Components call `src/api/*` directly. There's no global state. After a save, pages bump a `version` counter or
-  call `reset()` from `usePagedList`.
-- Mobile UI shell (`src/components/ui/`): every screen renders inside `<Page>` (fixed top bar), `App` renders
-  `<TabBar>`, and add/edit forms are `<Sheet>` bottom sheets opened by a `<Fab>`. `backButton.ts` makes Android back
-  close the top sheet before navigating, and tabs navigate with `replace` so back from a tab exits the app.
-  `styles.css` pads the bars with the safe-area insets Capacitor injects (`SystemBars.insetsHandling: "css"`).
-  Theme follows the system via `data-bs-theme` (`src/theme.ts`), and colours are CSS variables.
+- Components call `src/api/*` directly. There's no global state store. Tab pages stay mounted (`IonTabs`), so after
+  any write call `notifyChanged()` from `src/api/index.ts`; pages read `useDataVersion()` and pass it as a `useAsync`
+  dep or `usePagedList` key to reload.
+- UI shell (Ionic, `md` mode everywhere): `App.tsx` has `IonReactRouter` (React Router 6) > `IonTabs` with one
+  `IonRouterOutlet` holding all routes. Each tab keeps its own stack; `/expenses/search` is pushed inside the Expenses
+  tab. Every screen renders `<Page>` (`IonPage` + toolbar + `IonContent`), pass the FAB via its `fab` prop so it
+  sits directly in `IonContent`. Add/edit forms are `<Sheet>` (`IonModal` sheet sized to content via
+  `--height: auto`); use `useLastValue` so contents don't change while it animates closed. Lists page with
+  `usePagedList` + `<LoadMore>` (`IonInfiniteScroll`). Confirms, errors and toasts go through `useDialogs()`.
+- Android back (`useAndroidBack` in `App.tsx`): overlays close first (Ionic priority 100), then a pushed screen pops,
+  another tab returns to Expenses, and Expenses exits. Capacitor only forwards back presses to the page while an
+  `App` `backButton` listener exists, so the hook registers a no-op one.
+- Theme follows the system via Ionic's `palettes/dark.system.css`; app colours are CSS variables in `styles.css`.
+  Ionic's core.css maps Capacitor's injected `--safe-area-inset-*` (`SystemBars.insetsHandling: "css"`) to
+  `--ion-safe-area-*`.
 
 ## Data conventions
 
@@ -82,17 +90,16 @@ exercise it. "Decision" means it needs input from the owner first.
 - System bar icon colour following the light/dark theme (`SystemBars.setStyle` on theme change). Device.
 - Haptics on save, delete and tab switch (`@capacitor/haptics`). Device.
 - Undo snackbar for deletes instead of `window.confirm`.
-- Keep each tab's scroll position and loaded list when switching tabs. Tabs currently remount.
 - Remove unused deps (`d3`, `zod`, `@faker-js/faker`, `lodash.debounce`) and code-split per route. The main
-  chunk is about 570 KB.
-- Swipe-to-delete rows and swiping between tabs.
+  chunk is about 1.2 MB, mostly Ionic. `vite.config.ts` already drops unused `@ionic/core` component modules,
+  which `@ionic/core` doesn't mark side-effect free.
+- Swipe-to-delete rows (`IonItemSliding`) and swiping between tabs.
 - Budget notifications at 80% and 100% (`@capacitor/local-notifications`). Device. Decision: which alerts.
 - Biometric app lock on open or resume. Device. Decision: lock policy.
 - Android app shortcut "Add expense" on long-press of the icon. Device.
 - Currency and number-format setting. `$` is hard-coded in `src/format.ts`.
-- Keyboard handling in sheets (`@capacitor/keyboard`, scroll the focused field into view). Device.
-- Switch the UI layer to Ionic React. It gives native transitions, per-tab history, swipe-back and action sheets,
-  and would replace several items above. The data layer and tests would stay. Decision.
+- Keyboard handling in sheets (`@capacitor/keyboard`, scroll the focused field into view). Ionic's scroll assist
+  may already cover it. Device.
 - Home-screen widget with this month's spend or remaining budget. Needs native Kotlin. Device.
 - Automatic backups: verify that Android Auto Backup (`allowBackup="true"`) includes the database, and/or add a
   scheduled JSON export. Device.

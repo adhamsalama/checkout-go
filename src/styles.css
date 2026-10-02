@@ -1,36 +1,32 @@
-/* Mobile app shell on top of Bootstrap. Safe-area insets come from Capacitor's SystemBars
-   (--safe-area-inset-*) on Android, or env() in browsers. */
+/* App styles on top of Ionic (md mode, dark.system palette). Ionic's core.css already maps Capacitor's
+   --safe-area-inset-* variables to --ion-safe-area-*, which the toolbar and tab bar pad with. */
 :root {
-  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
-  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
-  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
-  --topbar-height: 56px;
-  --tabbar-height: 60px;
-  --app-bg: #f2f3f5;
   --surface: #ffffff;
-  --row-active: rgba(0, 0, 0, 0.06);
+  --secondary-text: var(--ion-color-medium);
+  --muted-bg: rgba(var(--ion-text-color-rgb, 0, 0, 0), 0.07);
   --expense: #c62828;
   --income: #2e7d32;
+
+  /* Light: grey page behind white cards. Dark values come from the palette (higher specificity). */
+  --ion-background-color: #f2f3f5;
+  --ion-background-color-rgb: 242, 243, 245;
+  --ion-item-background: var(--surface);
+  --ion-card-background: var(--surface);
+  --ion-toolbar-background: var(--surface);
+  --ion-tab-bar-background: var(--surface);
 }
 
-[data-bs-theme="dark"] {
-  --app-bg: #101114;
-  --surface: #1c1e22;
-  --row-active: rgba(255, 255, 255, 0.08);
-  --expense: #ef8a8a;
-  --income: #7fcf86;
-}
-
-html,
-body {
-  background: var(--app-bg);
-  overscroll-behavior-y: none;
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #1e1e1e;
+    --expense: #ef8a8a;
+    --income: #7fcf86;
+  }
 }
 
 body {
   -webkit-tap-highlight-color: transparent;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Prevents zoom-on-focus and keeps inputs readable. */
@@ -40,104 +36,11 @@ textarea {
   font-size: 16px !important;
 }
 
-.app-main {
-  padding: calc(var(--topbar-height) + var(--safe-top) + 12px) calc(12px + var(--safe-right))
-    calc(var(--tabbar-height) + var(--safe-bottom) + 88px) calc(12px + var(--safe-left));
+.page-body {
   max-width: 720px;
   margin: 0 auto;
-}
-
-.topbar {
-  position: fixed;
-  inset: 0 0 auto 0;
-  z-index: 1030;
-  padding: var(--safe-top) calc(4px + var(--safe-right)) 0 calc(4px + var(--safe-left));
-  height: calc(var(--topbar-height) + var(--safe-top));
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--bs-border-color-translucent);
-}
-
-.topbar-title {
-  flex: 1;
-  margin: 0 8px;
-  font-size: 1.25rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: inherit;
-}
-.icon-btn:active {
-  background: var(--row-active);
-}
-
-.tabbar {
-  position: fixed;
-  inset: auto 0 0 0;
-  z-index: 1030;
-  display: flex;
-  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
-  height: calc(var(--tabbar-height) + var(--safe-bottom));
-  background: var(--surface);
-  border-top: 1px solid var(--bs-border-color-translucent);
-  user-select: none;
-}
-
-.tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-size: 0.72rem;
-  color: var(--bs-secondary-color);
-  text-decoration: none;
-}
-.tab.active {
-  color: var(--bs-primary);
-  font-weight: 600;
-}
-.tab .tab-icon {
-  padding: 2px 18px;
-  border-radius: 16px;
-}
-.tab.active .tab-icon {
-  background: var(--bs-primary-bg-subtle);
-}
-
-.fab {
-  position: fixed;
-  right: calc(16px + var(--safe-right));
-  bottom: calc(var(--tabbar-height) + var(--safe-bottom) + 16px);
-  z-index: 1031;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  border: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: var(--bs-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-.fab:active {
-  filter: brightness(0.9);
+  /* Bottom room so the FAB doesn't cover the last row. */
+  padding: 12px 12px 88px;
 }
 
 .surface {
@@ -146,55 +49,53 @@ textarea {
 }
 
 .section-title {
+  display: flex;
+  justify-content: space-between;
   margin: 20px 4px 8px;
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--bs-secondary-color);
+  color: var(--secondary-text);
+}
+.page-body > .section-title:first-child {
+  margin-top: 4px;
+}
+.section-gap {
+  margin-top: 12px;
 }
 
+/* Rounded group of rows. */
 .list {
   background: var(--surface);
   border-radius: 16px;
   overflow: hidden;
+  padding: 0;
+}
+.list ion-item {
+  --min-height: 60px;
+}
+.list ion-item:last-child {
+  --border-width: 0;
+  --inner-border-width: 0;
 }
 
-.row-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 60px;
-  padding: 10px 16px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  user-select: none;
-}
-.row-item + .row-item {
-  border-top: 1px solid var(--bs-border-color-translucent);
-}
-.row-item:active {
-  background: var(--row-active);
-}
-.row-main {
-  flex: 1;
-  min-width: 0;
-}
 .row-title {
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+ion-label h2.row-title {
+  font-size: 1rem;
+}
 .row-sub {
   font-size: 0.82rem;
-  color: var(--bs-secondary-color);
+  color: var(--secondary-text);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+.row-tags {
+  margin-top: 4px;
 }
 
 .amount {
@@ -208,35 +109,41 @@ textarea {
 .amount.income {
   color: var(--income);
 }
+.danger {
+  color: var(--ion-color-danger);
+}
+.primary {
+  color: var(--ion-color-primary);
+}
 
-.chip {
+/* Read-only tag label in rows; tappable tags use IonChip. */
+.tag {
   display: inline-block;
   padding: 2px 10px;
-  margin: 0 4px 4px 0;
+  margin: 0 4px 2px 0;
   border-radius: 999px;
   font-size: 0.8rem;
-  background: var(--bs-secondary-bg);
-  color: var(--bs-body-color);
-  border: 1px solid transparent;
+  background: var(--muted-bg);
+  color: var(--ion-text-color);
 }
-button.chip {
-  padding: 6px 12px;
-  font-size: 0.875rem;
-}
-button.chip.selected {
-  background: var(--bs-primary-bg-subtle);
-  border-color: var(--bs-primary);
-  color: var(--bs-primary-text-emphasis);
+.chips {
+  margin: 0 0 8px -4px;
 }
 
 .stat-label {
   font-size: 0.82rem;
-  color: var(--bs-secondary-color);
+  color: var(--secondary-text);
 }
 .stat-value {
   font-size: 1.15rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
 }
 .balance-value {
   font-size: 2rem;
@@ -245,59 +152,136 @@ button.chip.selected {
   line-height: 1.2;
 }
 
+.budget-bar {
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 4px;
+}
+.budget-row {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+}
+.budget-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.budget-head ion-label {
+  margin: 0;
+}
+.budget-row .row-sub {
+  margin-top: 4px;
+}
+
 .empty-state {
   padding: 48px 16px;
   text-align: center;
-  color: var(--bs-secondary-color);
+  color: var(--secondary-text);
 }
 
-/* Bottom sheet (react-bootstrap Offcanvas placement="bottom"). */
-.offcanvas.sheet {
-  height: auto;
-  max-height: calc(92vh - var(--safe-top));
-  border-radius: 20px 20px 0 0;
-  background: var(--surface);
+/* Bottom sheet: Ionic 9 sizes the modal's IonContent to its content when --height is auto. */
+ion-modal.sheet {
+  --height: auto;
+  --max-height: calc(100% - var(--ion-safe-area-top) - 24px);
+  --border-radius: 20px;
+  --background: var(--surface);
 }
-.sheet .offcanvas-body {
-  padding-bottom: calc(16px + var(--safe-bottom));
+ion-modal.sheet ion-toolbar,
+ion-modal.sheet ion-content {
+  --background: var(--surface);
 }
-.sheet-handle {
-  width: 36px;
-  height: 4px;
-  margin: 8px auto 0;
-  border-radius: 2px;
-  background: var(--bs-border-color);
+ion-modal.sheet ion-content::part(scroll) {
+  padding-bottom: var(--ion-safe-area-bottom);
 }
+
 .amount-input {
+  --padding-top: 8px;
+  --padding-bottom: 16px;
   font-size: 2rem !important;
   font-weight: 600;
   text-align: center;
-  border: 0;
-  background: transparent;
 }
-.amount-input:focus {
-  box-shadow: none;
-  background: transparent;
+.amount-input input {
+  font-size: 2rem !important;
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field-row {
+  display: flex;
+  gap: 8px;
+}
+.field-row > * {
+  flex: 1;
+  min-width: 0;
+}
+.field-label {
+  font-size: 0.82rem;
+  color: var(--secondary-text);
+  margin: 0 4px 6px;
+}
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 24px;
+}
+.align-start {
+  align-self: flex-start;
 }
 
 .chart-box {
   position: relative;
   height: 240px;
 }
-
-/* Date inputs have an intrinsic min-width that overflows narrow flex rows. */
-input[type="date"] {
+.legend {
+  margin-top: 16px;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.legend-name {
+  flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.flex-fill {
-  min-width: 0;
+.legend-amount {
+  min-width: 90px;
+  text-align: right;
 }
 
-.app-main > .section-title:first-child {
-  margin-top: 4px;
+.intro {
+  margin: 4px 4px 0;
+  color: var(--secondary-text);
 }
-
-.sheet .offcanvas-header {
-  padding-top: 8px;
-  padding-bottom: 0;
+.page-body ion-card {
+  margin: 16px 0;
+  border-radius: 16px;
+  box-shadow: none;
+}
+.legacy-import {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+.legacy-import ion-select {
+  align-self: stretch;
 }

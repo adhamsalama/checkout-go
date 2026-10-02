@@ -1,4 +1,4 @@
-import { useAsync } from "../api";
+import { useAsync, useDataVersion } from "../api";
 import { getDailyExpenseStats, getMonthlyExpenseStats, getTagsStatistics } from "../api/transactions";
 import { formatMoney } from "../format";
 import { PALETTE } from "./chartTheme";
@@ -13,13 +13,13 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   return (
     <>
       <div className="section-title">{title}</div>
-      <div className="surface p-3">{children}</div>
+      <div className="surface ion-padding">{children}</div>
     </>
   );
 }
 
-function TagBreakdown() {
-  const { data } = useAsync(getTagsStatistics);
+function TagBreakdown({ version }: { version: number }) {
+  const { data } = useAsync(getTagsStatistics, [version]);
   if (!data) return null;
   if (data.length === 0) return <div className="empty-state">Tag your expenses to see where money goes.</div>;
   const top = data.slice(0, TOP_TAGS);
@@ -30,13 +30,13 @@ function TagBreakdown() {
   return (
     <>
       <PieChart labels={rows.map((r) => r.tag)} data={rows.map((r) => r.amount)} />
-      <div className="mt-3">
+      <div className="legend">
         {rows.map((r, i) => (
-          <div key={r.tag} className="d-flex align-items-center gap-2 py-1">
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: PALETTE[i % PALETTE.length] }} />
-            <span className="flex-fill text-truncate">{r.tag}</span>
+          <div key={r.tag} className="legend-row">
+            <span className="legend-swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
+            <span className="legend-name">{r.tag}</span>
             <span className="row-sub">{total ? Math.round((r.amount / total) * 100) : 0}%</span>
-            <span className="amount" style={{ minWidth: 90, textAlign: "right" }}>{formatMoney(r.amount)}</span>
+            <span className="amount legend-amount">{formatMoney(r.amount)}</span>
           </div>
         ))}
       </div>
@@ -45,20 +45,21 @@ function TagBreakdown() {
 }
 
 function Dashboard() {
+  const version = useDataVersion();
   const now = new Date();
   const years = [0, 1, 2].map((i) => now.getFullYear() - i);
-  const { data: yearly } = useAsync(() => Promise.all(years.map(getMonthlyExpenseStats)), []);
+  const { data: yearly } = useAsync(() => Promise.all(years.map(getMonthlyExpenseStats)), [version]);
 
   const monthStarts = [0, 1].map((i) => new Date(now.getFullYear(), now.getMonth() - i, 1));
   const { data: daily } = useAsync(
     () => Promise.all(monthStarts.map((d) => getDailyExpenseStats(d.getFullYear(), d.getMonth() + 1))),
-    []
+    [version]
   );
 
   return (
     <Page title="Stats">
       <Card title="Spending by tag">
-        <TagBreakdown />
+        <TagBreakdown version={version} />
       </Card>
       <Card title="Daily spending">
         <LineChart

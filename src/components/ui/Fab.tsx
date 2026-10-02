@@ -1,9 +1,13 @@
-import { Plus } from "react-bootstrap-icons";
+import { IonFab, IonFabButton, IonIcon } from "@ionic/react";
+import { add } from "ionicons/icons";
 
+/** Pass to `<Page fab>`; it must sit directly in the page's IonContent. */
 export function Fab({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button className="fab" aria-label={label} onClick={onClick}>
-      <Plus size={32} />
-    </button>
+    <IonFab slot="fixed" vertical="bottom" horizontal="end">
+      <IonFabButton aria-label={label} onClick={onClick}>
+        <IonIcon icon={add} />
+      </IonFabButton>
+    </IonFab>
   );
 }

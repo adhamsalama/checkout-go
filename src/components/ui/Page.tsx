@@ -1,32 +1,46 @@
+import {
+  IonBackButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+} from "@ionic/react";
 import { ReactNode } from "react";
-import { ArrowLeft } from "react-bootstrap-icons";
-import { useNavigate } from "react-router-dom";
 
-/** A screen: fixed top bar with title/actions, and scrollable content. */
+/** A screen: toolbar with title/actions, scrollable content, and an optional FAB and overlays. */
 export function Page({
   title,
   back,
   actions,
+  fab,
   children,
 }: {
   title: string;
-  back?: boolean;
+  /** Shows a back button; the value is where it goes when there's no history. */
+  back?: string;
   actions?: ReactNode;
+  fab?: ReactNode;
   children: ReactNode;
 }) {
-  const navigate = useNavigate();
   return (
-    <>
-      <header className="topbar">
-        {back && (
-          <button className="icon-btn" aria-label="Back" onClick={() => navigate(-1)}>
-            <ArrowLeft size={22} />
-          </button>
-        )}
-        <h1 className="topbar-title">{title}</h1>
-        {actions}
-      </header>
-      <main className="app-main">{children}</main>
-    </>
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          {back && (
+            <IonButtons slot="start">
+              <IonBackButton defaultHref={back} />
+            </IonButtons>
+          )}
+          <IonTitle>{title}</IonTitle>
+          {actions && <IonButtons slot="end">{actions}</IonButtons>}
+        </IonToolbar>
+      </IonHeader>
+      <IonContent>
+        <div className="page-body">{children}</div>
+        {fab}
+      </IonContent>
+    </IonPage>
   );
 }

@@ -1,33 +1,31 @@
+import { IonList } from "@ionic/react";
 import { useCallback, useState } from "react";
-import { useAsync } from "../api";
+import { useAsync, useDataVersion } from "../api";
 import { getCurrentMonthIncomeSum, listPayments } from "../api/transactions";
 import { formatMoney } from "../format";
 import { Fab } from "./ui/Fab";
 import { Page } from "./ui/Page";
 import { TransactionRow } from "./ui/TransactionRow";
-import { usePagedList } from "./ui/usePagedList";
+import { LoadMore, usePagedList } from "./ui/usePagedList";
 import { SheetState, TransactionSheet } from "./TransactionSheet";
 
 export default function PaymentPage() {
+  const version = useDataVersion();
   const [sheet, setSheet] = useState<SheetState>(null);
-  const [version, setVersion] = useState(0);
-  const { items, done, sentinel, reset } = usePagedList(listPayments);
+  const list = usePagedList(listPayments, version);
+  const { items } = list;
   const { data: monthTotal } = useAsync(() => getCurrentMonthIncomeSum(), [version]);
   const closeSheet = useCallback(() => setSheet(null), []);
-  const onSaved = useCallback(() => {
-    setVersion((v) => v + 1);
-    reset();
-  }, [reset]);
 
   return (
-    <Page title="Payments">
-      <div className="surface p-3 mb-3">
+    <Page title="Payments" fab={<Fab label="Add payment" onClick={() => setSheet({ kind: "payment" })} />}>
+      <div className="surface ion-padding">
         <div className="stat-label">Received this month</div>
         <div className="balance-value">{monthTotal === null ? "…" : formatMoney(monthTotal)}</div>
       </div>
       {items?.length === 0 && <div className="empty-state">No payments yet. Tap + to add income.</div>}
       {items && items.length > 0 && (
-        <div className="list">
+        <IonList className="list section-gap">
           {items.map((t) => (
             <TransactionRow
               key={t.id}
@@ -36,11 +34,10 @@ export default function PaymentPage() {
               onClick={() => setSheet({ kind: "payment", transaction: t })}
             />
           ))}
-        </div>
+        </IonList>
       )}
-      {!done && <div ref={sentinel} className="empty-state">Loading…</div>}
-      <Fab label="Add payment" onClick={() => setSheet({ kind: "payment" })} />
-      <TransactionSheet state={sheet} onClose={closeSheet} onSaved={onSaved} />
+      <LoadMore list={list} />
+      <TransactionSheet state={sheet} onClose={closeSheet} />
     </Page>
   );
 }

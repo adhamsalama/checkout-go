@@ -1,4 +1,4 @@
-import { DependencyList, useCallback, useEffect, useState } from "react";
+import { DependencyList, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /** Runs an async API call on mount and whenever deps change. */
 export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList = []) {
@@ -33,8 +33,23 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList = []) {
   return { data, loading, error, reload };
 }
 
-/** Shows an error from an API call to the user. */
-export function alertError(err: unknown) {
-  console.error(err);
-  alert(err instanceof Error ? err.message : String(err));
+// Tab pages stay mounted, so a write on one tab has to tell the others to reload.
+let dataVersion = 0;
+const listeners = new Set<() => void>();
+
+/** Call after any write so mounted pages reload their data. */
+export function notifyChanged() {
+  dataVersion += 1;
+  listeners.forEach((l) => l());
+}
+
+/** A counter that increases after every write; use it as a dependency to reload. */
+export function useDataVersion() {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => dataVersion
+  );
 }

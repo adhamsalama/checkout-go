@@ -1,10 +1,19 @@
-import { useState } from "react";
-import { Alert, Button, Card, Form } from "react-bootstrap";
+import {
+  IonButton,
+  IonCard,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonSelect,
+  IonSelectOption,
+} from "@ionic/react";
+import { useRef, useState } from "react";
 import { Page } from "./ui/Page";
 import { Capacitor } from "@capacitor/core";
-import { alertError, useAsync } from "../api";
+import { notifyChanged, useAsync, useDataVersion } from "../api";
 import { Backup, counts, exportBackup, ImportSummary, parseBackup, restoreBackup } from "../api/backup";
 import { LegacyDatabase, openLegacyDatabase } from "../api/legacy";
+import { useDialogs } from "./ui/dialogs";
 
 function describe(c: ImportSummary) {
   return `${c.transactions} transactions, ${c.monthlyBudgets} monthly budgets, ${c.taggedBudgets} tagged budgets`;
@@ -35,12 +44,39 @@ async function saveBackupFile(backup: Backup) {
   }
 }
 
+/** A button that opens the system file picker. */
+function FilePicker({ label, disabled, onFile }: {
+  label: string;
+  disabled: boolean;
+  onFile: (file: File) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) onFile(file);
+        }}
+      />
+      <IonButton fill="outline" disabled={disabled} onClick={() => input.current?.click()}>
+        {label}
+      </IonButton>
+    </>
+  );
+}
+
 export default function SettingsPage() {
-  const { data: current, reload } = useAsync(counts);
+  const version = useDataVersion();
+  const dialogs = useDialogs();
+  const { data: current } = useAsync(counts, [version]);
   const [legacy, setLegacy] = useState<LegacyDatabase | null>(null);
   const [legacyUser, setLegacyUser] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const restore = async (backup: Backup) => {
     const incoming = {
@@ -49,31 +85,30 @@ export default function SettingsPage() {
       taggedBudgets: backup.taggedBudgets.length,
     };
     const hasData = current && current.transactions + current.monthlyBudgets + current.taggedBudgets > 0;
-    const prompt =
+    const ok = await dialogs.confirm(
+      "Import data?",
       `Import ${describe(incoming)}?` +
-      (hasData ? `\n\nThis REPLACES everything currently in the app (${describe(current)}).` : "");
-    if (!window.confirm(prompt)) return;
+        (hasData ? ` This REPLACES everything currently in the app (${describe(current)}).` : ""),
+      "Import"
+    );
+    if (!ok) return;
     const summary = await restoreBackup(backup);
-    setMessage(`Imported ${describe(summary)}.`);
-    reload();
+    notifyChanged();
+    dialogs.toast(`Imported ${describe(summary)}.`);
   };
 
   const run = (fn: () => Promise<void>) => async () => {
     setBusy(true);
-    setMessage(null);
     try {
       await fn();
     } catch (err) {
-      alertError(err);
+      dialogs.showError(err);
     } finally {
       setBusy(false);
     }
   };
 
-  const onLegacyFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  const onLegacyFile = (file: File) =>
     run(async () => {
       legacy?.close();
       const db = await openLegacyDatabase(new Uint8Array(await file.arrayBuffer()));
@@ -84,12 +119,8 @@ export default function SettingsPage() {
       setLegacy(db);
       setLegacyUser(db.users[0].userId);
     })();
-  };
 
-  const onBackupFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  const onBackupFile = (file: File) =>
     run(async () => {
       let parsed: unknown;
       try {
@@ -99,7 +130,6 @@ export default function SettingsPage() {
       }
       await restore(parseBackup(parsed));
     })();
-  };
 
   const importLegacy = run(async () => {
     if (!legacy || legacyUser === null) return;
@@ -110,62 +140,66 @@ export default function SettingsPage() {
 
   return (
     <Page title="Backup">
-      <p className="px-1">All data is stored only on this device. {current && `Currently: ${describe(current)}.`}</p>
-      {message && <Alert variant="success">{message}</Alert>}
+      <p className="intro">All data is stored only on this device. {current && `Currently: ${describe(current)}.`}</p>
 
-      <Card className="mb-3 border-0 surface">
-        <Card.Body>
-          <Card.Title>Export</Card.Title>
-          <Card.Text>Save all data as a JSON file you can import later or on another device.</Card.Text>
-          <Button disabled={busy} onClick={run(async () => saveBackupFile(await exportBackup()))}>
+      <IonCard>
+        <IonCardHeader>
+          <IonCardTitle>Export</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <p>Save all data as a JSON file you can import later or on another device.</p>
+          <IonButton disabled={busy} onClick={run(async () => saveBackupFile(await exportBackup()))}>
             Export backup
-          </Button>
-        </Card.Body>
-      </Card>
+          </IonButton>
+        </IonCardContent>
+      </IonCard>
 
-      <Card className="mb-3 border-0 surface">
-        <Card.Body>
-          <Card.Title>Import backup</Card.Title>
-          <Card.Text>Restore a JSON file made with Export. This replaces all current data.</Card.Text>
-          <Form.Control type="file" disabled={busy} onChange={onBackupFile} />
-        </Card.Body>
-      </Card>
+      <IonCard>
+        <IonCardHeader>
+          <IonCardTitle>Import backup</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <p>Restore a JSON file made with Export. This replaces all current data.</p>
+          <FilePicker label="Choose file" disabled={busy} onFile={onBackupFile} />
+        </IonCardContent>
+      </IonCard>
 
-      <Card className="mb-3 border-0 surface">
-        <Card.Body>
-          <Card.Title>Import from the old server</Card.Title>
-          <Card.Text>
+      <IonCard>
+        <IonCardHeader>
+          <IonCardTitle>Import from the old server</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <p>
             Pick the <code>sqlite3.db</code> file from the old Checkout Go backend. It is read, not
             modified. This replaces all current data.
-          </Card.Text>
-          <Form.Control type="file" disabled={busy} onChange={onLegacyFile} />
+          </p>
+          <FilePicker label="Choose sqlite3.db" disabled={busy} onFile={onLegacyFile} />
           {legacy && (
-            <div className="mt-3">
-              {legacy.users.length === 1 && (
-                <p>Found {legacy.users[0].transactions} transactions.</p>
-              )}
+            <div className="legacy-import">
+              {legacy.users.length === 1 && <p>Found {legacy.users[0].transactions} transactions.</p>}
               {legacy.users.length > 1 && (
-                <Form.Group className="mb-2">
-                  <Form.Label>Which user's data?</Form.Label>
-                  <Form.Select
-                    value={legacyUser ?? undefined}
-                    onChange={(e) => setLegacyUser(Number(e.target.value))}
-                  >
-                    {legacy.users.map((u) => (
-                      <option key={u.userId} value={u.userId}>
-                        {u.username ?? `User ${u.userId}`} ({u.transactions} transactions)
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <IonSelect
+                  fill="outline"
+                  label="Which user's data?"
+                  labelPlacement="floating"
+                  interface="action-sheet"
+                  value={legacyUser}
+                  onIonChange={(e) => setLegacyUser(Number(e.detail.value))}
+                >
+                  {legacy.users.map((u) => (
+                    <IonSelectOption key={u.userId} value={u.userId}>
+                      {u.username ?? `User ${u.userId}`} ({u.transactions} transactions)
+                    </IonSelectOption>
+                  ))}
+                </IonSelect>
               )}
-              <Button disabled={busy} onClick={importLegacy}>
+              <IonButton disabled={busy} onClick={importLegacy}>
                 Import
-              </Button>
+              </IonButton>
             </div>
           )}
-        </Card.Body>
-      </Card>
+        </IonCardContent>
+      </IonCard>
     </Page>
   );
 }
