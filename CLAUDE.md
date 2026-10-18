@@ -95,6 +95,8 @@ remote uses the SSH host alias `github-personal`.
   `AndroidManifest.xml` has hand edits: `windowSoftInputMode="adjustResize"`.
   `MainActivity` calls `EdgeToEdge.enable`: below Android 15 the window isn't edge-to-edge by default, but
   `SystemBars` still injects the bar insets, so the tab bar got a nav-bar-high gap on top of the system's own.
+  It also re-shows the keyboard in `onWindowFocusChanged`: Gboard's keyboard picker (long-press space) takes
+  window focus, and afterwards Android left the field focused with no keyboard.
 - Android's file picker can report a stale 0-byte size for files copied in by adb or USB (MediaStore not
   re-indexed), and the WebView then reads 0 bytes. sql.js opens empty bytes as an empty database, so the legacy
   import fails with "no transactions table". The workaround is to pick the file via the device-storage root in the
